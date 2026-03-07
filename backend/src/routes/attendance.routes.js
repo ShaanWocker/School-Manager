@@ -6,6 +6,13 @@ const { protect, authorize } = require('../middleware/auth.middleware');
 
 const prisma = new PrismaClient();
 
+// Helper: Get start and end of a given date for range queries
+const getDateRange = (date) => {
+  const start = new Date(new Date(date).toISOString().split('T')[0]);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { gte: start, lt: end };
+};
+
 // ============================================
 // @route   GET /api/attendance/report
 // @desc    Generate attendance report
@@ -104,8 +111,9 @@ router.get('/student/:studentId/summary', protect, async (req, res, next) => {
       sick: attendance.filter(a => a.status === 'SICK').length
     };
 
+    // Attendance rate counts PRESENT and LATE as attended; EXCUSED and SICK are excluded from penalty
     summary.attendancePercentage = summary.totalDays > 0
-      ? parseFloat((((summary.present + summary.late + summary.excused + summary.sick) / summary.totalDays) * 100).toFixed(2))
+      ? parseFloat((((summary.present + summary.late) / summary.totalDays) * 100).toFixed(2))
       : 0;
 
     res.json({
@@ -124,17 +132,10 @@ router.get('/student/:studentId/summary', protect, async (req, res, next) => {
 
 router.get('/class/:classId/date/:date', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF', 'TEACHER'), async (req, res, next) => {
   try {
-    const dateObj = new Date(req.params.date);
-    const nextDay = new Date(dateObj);
-    nextDay.setDate(nextDay.getDate() + 1);
-
     const attendance = await prisma.attendance.findMany({
       where: {
         classId: req.params.classId,
-        date: {
-          gte: dateObj,
-          lt: nextDay
-        }
+        date: getDateRange(req.params.date)
       },
       include: {
         student: {
@@ -346,10 +347,7 @@ router.post('/', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF', '
     const existing = await prisma.attendance.findFirst({
       where: {
         studentId,
-        date: {
-          gte: new Date(attendanceDate.toISOString().split('T')[0]),
-          lt: new Date(new Date(attendanceDate.toISOString().split('T')[0]).getTime() + 86400000)
-        }
+        date: getDateRange(attendanceDate)
       }
     });
 
@@ -508,8 +506,7 @@ router.post('/bulk', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'), 
 
     const { classId, date, records } = req.body;
     const attendanceDate = date ? new Date(date) : new Date();
-    const dateStart = new Date(attendanceDate.toISOString().split('T')[0]);
-    const dateEnd = new Date(dateStart.getTime() + 86400000);
+    const dateRange = getDateRange(attendanceDate);
 
     // Check for any existing records
     const studentIds = records.map(r => r.studentId);
@@ -517,7 +514,7 @@ router.post('/bulk', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'), 
       where: {
         studentId: { in: studentIds },
         classId,
-        date: { gte: dateStart, lt: dateEnd }
+        date: dateRange
       }
     });
 

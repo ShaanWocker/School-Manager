@@ -217,9 +217,10 @@ router.get('/class/:classId/subject/:subjectId', protect, authorize('SUPER_ADMIN
       };
     });
 
-    const classAverage = studentPerformance
-      .filter(s => s.average !== null)
-      .reduce((sum, s, _, arr) => sum + s.average / arr.length, 0);
+    const eligibleStudents = studentPerformance.filter(s => s.average !== null);
+    const classAverage = eligibleStudents.length > 0
+      ? eligibleStudents.reduce((sum, s) => sum + s.average, 0) / eligibleStudents.length
+      : 0;
 
     res.json({
       success: true,

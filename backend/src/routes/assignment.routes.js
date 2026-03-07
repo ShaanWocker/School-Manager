@@ -164,8 +164,8 @@ router.post('/', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'TEACHER'), [
       groupSize
     } = req.body;
 
-    // Validate due date is in the future
-    if (new Date(dueDate) <= new Date()) {
+    // Validate due date is in the future (allow same-day deadlines)
+    if (new Date(dueDate) < new Date()) {
       return res.status(400).json({
         success: false,
         message: 'Due date must be in the future'
