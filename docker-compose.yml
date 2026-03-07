@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: edumanage-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edumanage_db}
+      POSTGRES_USER: ${POSTGRES_USER:-edumanage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edumanage123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - edumanage-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edumanage"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edumanage-backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-edumanage}:${POSTGRES_PASSWORD:-edumanage123}@postgres:5432/${POSTGRES_DB:-edumanage_db}?schema=public
+      PORT: 5000
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-key}
+      JWT_EXPIRE: 7d
+      FRONTEND_URL: http://localhost
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - edumanage-network
+    volumes:
+      - ./backend/uploads:/app/uploads
+    command: sh -c "npx prisma migrate deploy && npm start"
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:5000/api
+    container_name: edumanage-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - edumanage-network
+
+  # Prisma Studio (Development Only)
+  prisma-studio:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edumanage-prisma-studio
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-edumanage}:${POSTGRES_PASSWORD:-edumanage123}@postgres:5432/${POSTGRES_DB:-edumanage_db}?schema=public
+    ports:
+      - "5555:5555"
+    depends_on:
+      - postgres
+    networks:
+      - edumanage-network
+    command: npx prisma studio --port 5555 --browser none
+    profiles:
+      - development
+
+networks:
+  edumanage-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
