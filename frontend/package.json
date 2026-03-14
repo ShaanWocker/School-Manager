@@ -4,12 +4,17 @@
   "description": "EduManage SA - School Management System Frontend",
   "private": true,
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/material": "^7.3.9",
+    "axios": "^1.6.2",
+    "lucide-react": "^0.577.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.0",
-    "axios": "^1.6.2",
-    "recharts": "^2.10.3",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "recharts": "^2.10.3"
   },
   "scripts": {
     "start": "react-scripts start",
