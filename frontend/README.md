@@ -289,6 +289,10 @@ const handleLogin = async (email, password) => {
 
 The API service automatically adds the token to all requests. If the token is invalid or expired, the user is redirected to login.
 
+## 🗺️ Routing
+
+The app is router-enabled using **React Router v6** (`react-router-dom`). `index.js` wraps `<App />` in a `<BrowserRouter>` so all components can use hooks like `useNavigate`, `useLocation`, and `<Link>` without an additional provider. The `AdminLayout` component uses `<Outlet />` for nested routes, allowing role-based navigation menus to control page rendering.
+
 ## 📱 Responsive Design
 
 The UI is fully responsive and works on:
