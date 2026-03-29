@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Users, BookOpen, Calendar, DollarSign, FileText, Settings, Bell, Menu, X, ChevronDown, Search, Plus, Download, Upload, Edit, Trash2, Eye, Clock, CheckCircle, AlertCircle, TrendingUp, Award, GraduationCap, Building, UserCheck, CreditCard, MessageSquare, BarChart3, FileSpreadsheet, Library, Bus, Home, Video, Link, File, Send, Check, XCircle, Play, Pause, BookMarked, ClipboardList, Target, Brain, Pencil, Star, ThumbsUp, MessageCircle, Filter, Calendar as CalendarIcon, AlarmClock, CheckSquare, AlertTriangle } from 'lucide-react';
+import { authService } from './services/authService';
 
 // Simulated storage for demo
 const useStorage = (key, initialValue) => {
@@ -1165,7 +1166,7 @@ export default function SchoolManagementSystem() {
           </div>
         </div>
 
-        <div className="user-profile">
+        <div className="user-profile" onClick={() => setActiveModule('settings')} style={{ cursor: 'pointer' }}>
           <div className="user-avatar">{currentUser.avatar}</div>
           <div className="user-info">
             <div className="user-name">{currentUser.name}</div>
@@ -1200,6 +1201,10 @@ export default function SchoolManagementSystem() {
               <span className="notification-badge">5</span>
             </div>
             <button className="logout-button" onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              localStorage.removeItem('currentUser');
+              localStorage.removeItem('currentInstitution');
               setCurrentUser(null);
               setCurrentInstitution(null);
             }}>
@@ -1227,7 +1232,7 @@ export default function SchoolManagementSystem() {
           {activeModule === 'reports' && <ReportsView />}
           {activeModule === 'sgb' && <SGBView />}
           {activeModule === 'transport' && <TransportView />}
-          {activeModule === 'settings' && <SettingsView />}
+          {activeModule === 'settings' && <SettingsView currentUser={currentUser} setCurrentUser={setCurrentUser} />}
         </div>
       </div>
 
@@ -3896,4 +3901,232 @@ function LibraryView() { return <div className="page-header"><h1 className="page
 function ReportsView() { return <div className="page-header"><h1 className="page-title">Reports Module</h1></div>; }
 function SGBView() { return <div className="page-header"><h1 className="page-title">SGB Portal</h1></div>; }
 function TransportView() { return <div className="page-header"><h1 className="page-title">Transport Module</h1></div>; }
-function SettingsView() { return <div className="page-header"><h1 className="page-title">Settings Module</h1></div>; }
+function SettingsView({ currentUser, setCurrentUser }) {
+  const MIN_PASSWORD_LENGTH = 6;
+
+  // Derive firstName/lastName from name if not present (demo user compatibility)
+  const deriveName = (user) => {
+    if (!user) return { firstName: '', lastName: '' };
+    if (user.firstName !== undefined) return { firstName: user.firstName || '', lastName: user.lastName || '' };
+    const parts = (user.name || '').split(' ');
+    return { firstName: parts[0] || '', lastName: parts.slice(1).join(' ') };
+  };
+
+  const { firstName: initFirst, lastName: initLast } = deriveName(currentUser);
+
+  const [profileForm, setProfileForm] = useState({
+    firstName: initFirst,
+    lastName: initLast,
+    phone: currentUser?.phone || '',
+    avatar: currentUser?.avatar || '👤',
+  });
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+  const [pwMsg, setPwMsg] = useState({ type: '', text: '' });
+  const [pwLoading, setPwLoading] = useState(false);
+
+  const avatarOptions = ['👤', '👨‍💼', '👩‍💼', '👨‍🏫', '👩‍🏫', '🎓', '👨‍🎓', '👩‍🎓', '🏫', '⭐'];
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    setProfileMsg({ type: '', text: '' });
+    try {
+      const result = await authService.updateProfile({
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
+        phone: profileForm.phone,
+        avatar: profileForm.avatar,
+      });
+      const updatedUser = result.data || result;
+      // Merge updates into stored currentUser
+      const merged = {
+        ...currentUser,
+        firstName: updatedUser.firstName ?? profileForm.firstName,
+        lastName: updatedUser.lastName ?? profileForm.lastName,
+        name: `${updatedUser.firstName ?? profileForm.firstName} ${updatedUser.lastName ?? profileForm.lastName}`.trim(),
+        phone: updatedUser.phone ?? profileForm.phone,
+        avatar: updatedUser.avatar ?? profileForm.avatar,
+      };
+      setCurrentUser(merged);
+      localStorage.setItem('user', JSON.stringify(merged));
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully.' });
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to update profile.';
+      setProfileMsg({ type: 'error', text: msg });
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPwMsg({ type: '', text: '' });
+    if (pwForm.newPassword !== pwForm.confirmNewPassword) {
+      setPwMsg({ type: 'error', text: 'New passwords do not match.' });
+      return;
+    }
+    if (pwForm.newPassword.length < MIN_PASSWORD_LENGTH) {
+      setPwMsg({ type: 'error', text: `New password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
+      return;
+    }
+    setPwLoading(true);
+    try {
+      await authService.updatePassword(pwForm.currentPassword, pwForm.newPassword);
+      setPwMsg({ type: 'success', text: 'Password changed successfully.' });
+      setPwForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to change password.';
+      setPwMsg({ type: 'error', text: msg });
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  const feedbackStyle = (type) => ({
+    padding: '10px 14px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    marginBottom: '16px',
+    background: type === 'success' ? 'rgba(72, 187, 120, 0.15)' : 'rgba(245, 101, 101, 0.15)',
+    color: type === 'success' ? '#276749' : '#c53030',
+    border: `1px solid ${type === 'success' ? 'rgba(72,187,120,0.4)' : 'rgba(245,101,101,0.4)'}`,
+  });
+
+  return (
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">Manage your profile and account security</p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+        {/* Edit Profile Card */}
+        <div className="chart-card">
+          <div className="chart-header">
+            <h2 className="chart-title">Edit Profile</h2>
+          </div>
+
+          {profileMsg.text && <div style={feedbackStyle(profileMsg.type)}>{profileMsg.text}</div>}
+
+          <form onSubmit={handleProfileSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">First Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={profileForm.firstName}
+                  onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Last Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={profileForm.lastName}
+                  onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Phone Number</label>
+              <input
+                type="tel"
+                className="form-input"
+                value={profileForm.phone}
+                onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                placeholder="+27 xx xxx xxxx"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Avatar</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                {avatarOptions.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setProfileForm({ ...profileForm, avatar: emoji })}
+                    style={{
+                      fontSize: '24px',
+                      padding: '6px',
+                      borderRadius: '8px',
+                      border: profileForm.avatar === emoji ? '2px solid #667eea' : '2px solid transparent',
+                      background: profileForm.avatar === emoji ? 'rgba(102,126,234,0.1)' : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="action-button primary" disabled={profileLoading} style={{ width: '100%', justifyContent: 'center' }}>
+              {profileLoading ? 'Saving…' : 'Save Profile'}
+            </button>
+          </form>
+        </div>
+
+        {/* Change Password Card */}
+        <div className="chart-card">
+          <div className="chart-header">
+            <h2 className="chart-title">Change Password</h2>
+          </div>
+
+          {pwMsg.text && <div style={feedbackStyle(pwMsg.type)}>{pwMsg.text}</div>}
+
+          <form onSubmit={handlePasswordSubmit}>
+            <div className="form-group">
+              <label className="form-label">Current Password</label>
+              <input
+                type="password"
+                className="form-input"
+                value={pwForm.currentPassword}
+                onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">New Password</label>
+              <input
+                type="password"
+                className="form-input"
+                value={pwForm.newPassword}
+                onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                required
+                autoComplete="new-password"
+                minLength={MIN_PASSWORD_LENGTH}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Confirm New Password</label>
+              <input
+                type="password"
+                className="form-input"
+                value={pwForm.confirmNewPassword}
+                onChange={(e) => setPwForm({ ...pwForm, confirmNewPassword: e.target.value })}
+                required
+                autoComplete="new-password"
+              />
+            </div>
+
+            <button type="submit" className="action-button primary" disabled={pwLoading} style={{ width: '100%', justifyContent: 'center' }}>
+              {pwLoading ? 'Updating…' : 'Change Password'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
