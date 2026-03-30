@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SettingsView from './components/SettingsView';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Users, BookOpen, Calendar, DollarSign, FileText, Settings, Bell, Menu, X, ChevronDown, Search, Plus, Download, Upload, Edit, Trash2, Eye, Clock, CheckCircle, AlertCircle, TrendingUp, Award, GraduationCap, Building, UserCheck, CreditCard, MessageSquare, BarChart3, FileSpreadsheet, Library, Bus, Home, Video, Link, File, Send, Check, XCircle, Play, Pause, BookMarked, ClipboardList, Target, Brain, Pencil, Star, ThumbsUp, MessageCircle, Filter, Calendar as CalendarIcon, AlarmClock, CheckSquare, AlertTriangle } from 'lucide-react';
 
@@ -1165,7 +1166,7 @@ export default function SchoolManagementSystem() {
           </div>
         </div>
 
-        <div className="user-profile">
+        <div className="user-profile" onClick={() => setActiveModule('settings')} style={{ cursor: 'pointer' }}>
           <div className="user-avatar">{currentUser.avatar}</div>
           <div className="user-info">
             <div className="user-name">{currentUser.name}</div>
@@ -1200,6 +1201,10 @@ export default function SchoolManagementSystem() {
               <span className="notification-badge">5</span>
             </div>
             <button className="logout-button" onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              localStorage.removeItem('currentUser');
+              localStorage.removeItem('currentInstitution');
               setCurrentUser(null);
               setCurrentInstitution(null);
             }}>
@@ -1227,7 +1232,7 @@ export default function SchoolManagementSystem() {
           {activeModule === 'reports' && <ReportsView />}
           {activeModule === 'sgb' && <SGBView />}
           {activeModule === 'transport' && <TransportView />}
-          {activeModule === 'settings' && <SettingsView />}
+          {activeModule === 'settings' && <SettingsView currentUser={currentUser} setCurrentUser={setCurrentUser} />}
         </div>
       </div>
 
@@ -3896,4 +3901,3 @@ function LibraryView() { return <div className="page-header"><h1 className="page
 function ReportsView() { return <div className="page-header"><h1 className="page-title">Reports Module</h1></div>; }
 function SGBView() { return <div className="page-header"><h1 className="page-title">SGB Portal</h1></div>; }
 function TransportView() { return <div className="page-header"><h1 className="page-title">Transport Module</h1></div>; }
-function SettingsView() { return <div className="page-header"><h1 className="page-title">Settings Module</h1></div>; }
