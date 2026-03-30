@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SettingsView from './components/SettingsView';
+import StudentsView from './components/StudentsView';
+import AttendanceView from './components/AttendanceView';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Users, BookOpen, Calendar, DollarSign, FileText, Settings, Bell, Menu, X, ChevronDown, Search, Plus, Download, Upload, Edit, Trash2, Eye, Clock, CheckCircle, AlertCircle, TrendingUp, Award, GraduationCap, Building, UserCheck, CreditCard, MessageSquare, BarChart3, FileSpreadsheet, Library, Bus, Home, Video, Link, File, Send, Check, XCircle, Play, Pause, BookMarked, ClipboardList, Target, Brain, Pencil, Star, ThumbsUp, MessageCircle, Filter, Calendar as CalendarIcon, AlarmClock, CheckSquare, AlertTriangle } from 'lucide-react';
 
@@ -3889,10 +3891,8 @@ function NewDiscussionModal({ onClose }) {
   );
 }
 
-// Placeholder components for existing modules
-function StudentsView() { return <div className="page-header"><h1 className="page-title">Students Module</h1></div>; }
+// Placeholder components for remaining modules
 function TeachersView() { return <div className="page-header"><h1 className="page-title">Teachers Module</h1></div>; }
-function AttendanceView() { return <div className="page-header"><h1 className="page-title">Attendance Module</h1></div>; }
 function TimetableView() { return <div className="page-header"><h1 className="page-title">Timetable Module</h1></div>; }
 function GradesView() { return <div className="page-header"><h1 className="page-title">Grades Module</h1></div>; }
 function FeesView() { return <div className="page-header"><h1 className="page-title">Fees Module</h1></div>; }
