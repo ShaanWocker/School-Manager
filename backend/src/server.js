@@ -63,6 +63,7 @@ app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/institutions', require('./routes/institution.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/students', require('./routes/student.routes'));
+app.use('/api/registrations', require('./routes/registration.routes'));
 app.use('/api/teachers', require('./routes/teacher.routes'));
 app.use('/api/classes', require('./routes/class.routes'));
 app.use('/api/subjects', require('./routes/subject.routes'));

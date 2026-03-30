@@ -110,21 +110,30 @@ model Student {
   
   admissionNumber String   @unique
   admissionDate   DateTime
+  emisNumber      String?  // DBE EMIS learner number
   
   // Personal Information
+  preferredName   String?
   dateOfBirth     DateTime
   gender          String
   nationality     String   @default("South African")
+  race            String?  // DBE reporting: African, Coloured, Indian, White, Other
   homeLanguage    String?
+  additionalLanguages String[] // Extra languages spoken
   religion        String?
+  passportNumber  String?  // Alternative to SA ID
   
   // Contact Information
   address         String?
+  suburb          String?
   city            String?
   province        String?
   postalCode      String?
+  postalAddress   String?  // Separate postal address if different
+  secondaryPhone  String?
+  secondaryEmail  String?
   
-  // Guardian Information
+  // Guardian Information (legacy single-guardian fields kept for compatibility)
   guardianName    String?
   guardianPhone   String?
   guardianEmail   String?
@@ -134,21 +143,61 @@ model Student {
   
   // Academic Information
   currentGrade    String   // Grade 8, Grade 9, etc.
+  gradeApplyingFor String? // Grade applied for at admission
+  yearOfAdmission Int?
   previousSchool  String?
+  previousSchoolEmis String?
+  transferCardReceived Boolean @default(false)
+  reasonForLeaving String?
+  lastGradePassed  String?
+  repeatingGrade   Boolean @default(false)
   classId         String?
   class           Class?   @relation(fields: [classId], references: [id])
+  
+  // Curriculum
+  lolt            String?  // Language of Learning and Teaching
+  assessmentAccommodations String?
   
   // Medical Information
   medicalConditions String?
   allergies        String?
   medications      String?
   bloodType        String?
+  medicalAidName   String?
+  medicalAidNumber String?
+  doctorName       String?
+  doctorPhone      String?
+  chronicIllnesses String?
+  disabilities     String?
+  dietaryRequirements String?
+  emergencyTreatmentConsent Boolean @default(false)
+  
+  // Special Needs
+  learningBarriers String?
+  iepRequired      Boolean @default(false)
+  psychologicalAssessments String?
+  supportServices  String?
   
   // Financial Information
   feeCategory      String   @default("Standard")
   feeExemption     Boolean  @default(false)
   exemptionReason  String?
   outstandingBalance Decimal @default(0) @db.Decimal(10, 2)
+  householdIncomeBracket String?
+  parentEmploymentStatus String?
+  billingContact   String?
+  paymentPlan      String?
+  accountNumber    String?
+  
+  // Transport (admission-level request)
+  transportRequired Boolean @default(false)
+  transportPickupAddress String?
+  transportDropoffAddress String?
+  transportProvider String?
+  transportRouteNumber String?
+  
+  // Admin
+  capturedById    String?  // Staff user who captured the registration
   
   status          StudentStatus @default(ACTIVE)
   
@@ -157,6 +206,11 @@ model Student {
   
   // Relations
   parents         Parent[]
+  guardians       Guardian[]
+  emergencyContacts EmergencyContact[]
+  documents       StudentDocument[]
+  consents        StudentConsent[]
+  auditLogs       RegistrationAuditLog[]
   enrollments     Enrollment[]
   attendance      Attendance[]
   grades          Grade[]
@@ -168,6 +222,149 @@ model Student {
   transportAssignments TransportAssignment[]
   
   @@map("students")
+}
+
+// ============================================
+// REGISTRATION EXTENSION MODELS
+// ============================================
+
+model Guardian {
+  id              String   @id @default(uuid())
+  
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  // Identity
+  firstName       String
+  lastName        String
+  idNumber        String?
+  passportNumber  String?
+  
+  // Relationship
+  relationship    String   // Mother, Father, Legal Guardian, Grandparent, etc.
+  isPrimaryGuardian Boolean @default(false)
+  livesWithLearner Boolean @default(true)
+  hasLegalCustody Boolean @default(false)
+  courtOrderReference String?
+  
+  // Contact
+  mobilePhone     String?
+  workPhone       String?
+  email           String?
+  
+  // Occupation
+  occupation      String?
+  employer        String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("guardians")
+}
+
+model EmergencyContact {
+  id              String   @id @default(uuid())
+  
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  fullName        String
+  relationship    String
+  primaryPhone    String
+  alternatePhone  String?
+  alternateContact String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("emergency_contacts")
+}
+
+model StudentDocument {
+  id              String   @id @default(uuid())
+  
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  documentType    DocumentType
+  fileName        String
+  fileUrl         String   // Path to uploaded file under /uploads/
+  fileSize        Int?     // bytes
+  mimeType        String?
+  
+  verificationStatus DocumentVerificationStatus @default(PENDING)
+  verifiedById    String?
+  verifiedAt      DateTime?
+  notes           String?
+  
+  uploadedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("student_documents")
+}
+
+enum DocumentType {
+  BIRTH_CERTIFICATE
+  LEARNER_ID
+  GUARDIAN_ID
+  PROOF_OF_RESIDENCE
+  IMMUNISATION_CARD
+  PREVIOUS_REPORT
+  TRANSFER_LETTER
+  COURT_ORDER
+  MEDICAL_CERTIFICATE
+  OTHER
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model StudentConsent {
+  id              String   @id @default(uuid())
+  
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  consentType     ConsentType
+  granted         Boolean  @default(false)
+  grantedBy       String?  // Name of person who granted consent
+  grantedAt       DateTime?
+  ipAddress       String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([studentId, consentType])
+  @@map("student_consents")
+}
+
+enum ConsentType {
+  POPIA
+  MEDIA
+  CODE_OF_CONDUCT
+  INDEMNITY
+  ICT_POLICY
+}
+
+model RegistrationAuditLog {
+  id              String   @id @default(uuid())
+  
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  action          String   // CREATED, UPDATED, DOCUMENT_UPLOADED, STATUS_CHANGED, etc.
+  fieldName       String?  // Which field changed
+  oldValue        String?
+  newValue        String?
+  performedById   String   // User ID
+  performedByName String?
+  
+  createdAt       DateTime @default(now())
+  
+  @@map("registration_audit_logs")
 }
 
 enum StudentStatus {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Plus, Search, Edit, Trash2, Eye, Download, X, UserCheck, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Plus, Search, Edit, Trash2, Eye, Download, X, UserCheck, AlertCircle, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 import { studentService } from '../services/studentService';
+import LearnerRegistrationWizard from './LearnerRegistrationWizard';
 
 const GRADES = ['Grade R', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 const STATUSES = ['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'SUSPENDED'];
@@ -189,6 +190,7 @@ export default function StudentsView() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showRegistrationWizard, setShowRegistrationWizard] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [viewStudent, setViewStudent] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -261,6 +263,10 @@ export default function StudentsView() {
           <button className="action-button" onClick={handleExport}>
             <Download size={14} />
             Export CSV
+          </button>
+          <button className="action-button" onClick={() => setShowRegistrationWizard(true)} style={{ background: 'linear-gradient(135deg,#667eea,#764ba2)', color: '#fff', border: 'none' }}>
+            <ClipboardList size={14} />
+            New Registration
           </button>
           <button className="action-button primary" onClick={() => setShowAddModal(true)}>
             <Plus size={14} />
@@ -460,6 +466,13 @@ export default function StudentsView() {
           student={editStudent}
           onClose={() => { setShowAddModal(false); setEditStudent(null); }}
           onSave={() => { setShowAddModal(false); setEditStudent(null); loadStudents(); }}
+        />
+      )}
+
+      {showRegistrationWizard && (
+        <LearnerRegistrationWizard
+          onClose={() => setShowRegistrationWizard(false)}
+          onSuccess={() => { setShowRegistrationWizard(false); loadStudents(); }}
         />
       )}
     </div>
