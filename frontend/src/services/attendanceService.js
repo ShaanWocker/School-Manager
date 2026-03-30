@@ -63,8 +63,8 @@ export const attendanceService = {
    * @param {Array} attendanceList - Array of attendance records per student
    * @returns {Promise} Bulk attendance result
    */
-  markBulkAttendance: async (classId, date, attendanceList) => {
-    const response = await api.post('/attendance/bulk', { classId, date, attendanceList });
+  markBulkAttendance: async (classId, date, records) => {
+    const response = await api.post('/attendance/bulk', { classId, date, records });
     return response.data;
   },
 

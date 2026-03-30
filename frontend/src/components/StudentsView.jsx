@@ -6,16 +6,6 @@ const GRADES = ['Grade R', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'
 const STATUSES = ['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'SUSPENDED'];
 const GENDERS = ['Male', 'Female', 'Other'];
 
-const mockStudents = [
-  { id: '1', admissionNumber: 'ADM2024001', firstName: 'Sipho', lastName: 'Dlamini', currentGrade: 'Grade 10', gender: 'Male', status: 'ACTIVE', guardianName: 'Thembi Dlamini', guardianPhone: '011-555-0101', user: { email: 'sipho.d@school.co.za' }, attendanceRate: 94 },
-  { id: '2', admissionNumber: 'ADM2024002', firstName: 'Nomsa', lastName: 'Khumalo', currentGrade: 'Grade 11', gender: 'Female', status: 'ACTIVE', guardianName: 'Samuel Khumalo', guardianPhone: '011-555-0202', user: { email: 'nomsa.k@school.co.za' }, attendanceRate: 88 },
-  { id: '3', admissionNumber: 'ADM2024003', firstName: 'Lebo', lastName: 'Molefe', currentGrade: 'Grade 9', gender: 'Male', status: 'ACTIVE', guardianName: 'Dineo Molefe', guardianPhone: '011-555-0303', user: { email: 'lebo.m@school.co.za' }, attendanceRate: 76 },
-  { id: '4', admissionNumber: 'ADM2024004', firstName: 'Zanele', lastName: 'Ndlovu', currentGrade: 'Grade 12', gender: 'Female', status: 'ACTIVE', guardianName: 'Patrick Ndlovu', guardianPhone: '011-555-0404', user: { email: 'zanele.n@school.co.za' }, attendanceRate: 97 },
-  { id: '5', admissionNumber: 'ADM2024005', firstName: 'Thabo', lastName: 'Sithole', currentGrade: 'Grade 10', gender: 'Male', status: 'INACTIVE', guardianName: 'Maria Sithole', guardianPhone: '011-555-0505', user: { email: 'thabo.s@school.co.za' }, attendanceRate: 60 },
-  { id: '6', admissionNumber: 'ADM2024006', firstName: 'Ayanda', lastName: 'Zulu', currentGrade: 'Grade 8', gender: 'Female', status: 'ACTIVE', guardianName: 'Bongani Zulu', guardianPhone: '011-555-0606', user: { email: 'ayanda.z@school.co.za' }, attendanceRate: 91 },
-  { id: '7', admissionNumber: 'ADM2024007', firstName: 'Kagiso', lastName: 'Mokoena', currentGrade: 'Grade 11', gender: 'Male', status: 'ACTIVE', guardianName: 'Grace Mokoena', guardianPhone: '011-555-0707', user: { email: 'kagiso.m@school.co.za' }, attendanceRate: 85 },
-  { id: '8', admissionNumber: 'ADM2024008', firstName: 'Precious', lastName: 'Mahlangu', currentGrade: 'Grade 9', gender: 'Female', status: 'SUSPENDED', guardianName: 'David Mahlangu', guardianPhone: '011-555-0808', user: { email: 'precious.m@school.co.za' }, attendanceRate: 55 },
-];
 
 const emptyForm = {
   firstName: '', lastName: '', currentGrade: 'Grade 10', gender: 'Male',
@@ -31,7 +21,9 @@ function statusBadge(status) {
 
 function StudentModal({ student, onClose }) {
   if (!student) return null;
-  const fullName = `${student.firstName} ${student.lastName}`;
+  const firstName = student.user?.firstName || student.firstName || '';
+  const lastName = student.user?.lastName || student.lastName || '';
+  const fullName = `${firstName} ${lastName}`.trim();
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
@@ -42,7 +34,7 @@ function StudentModal({ student, onClose }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '0 0 24px', borderBottom: '1px solid rgba(102,126,234,0.1)' }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#667eea,#764ba2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: 'white', fontWeight: 700, flexShrink: 0 }}>
-            {student.firstName?.[0]}{student.lastName?.[0]}
+            {firstName?.[0] || '?'}{lastName?.[0] || ''}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 22, color: '#1a202c' }}>{fullName}</div>
@@ -85,7 +77,7 @@ function StudentFormModal({ student, onClose, onSave }) {
   const isEdit = Boolean(student?.id);
   const [form, setForm] = useState(
     isEdit
-      ? { firstName: student.firstName || '', lastName: student.lastName || '', currentGrade: student.currentGrade || 'Grade 10', gender: student.gender || 'Male', dateOfBirth: student.dateOfBirth || '', guardianName: student.guardianName || '', guardianPhone: student.guardianPhone || '', guardianEmail: student.guardianEmail || '', guardianRelation: student.guardianRelation || '', address: student.address || '', city: student.city || '', province: student.province || '', email: student.user?.email || '', phone: student.user?.phone || '', medicalConditions: student.medicalConditions || '', status: student.status || 'ACTIVE' }
+      ? { firstName: student.user?.firstName || student.firstName || '', lastName: student.user?.lastName || student.lastName || '', currentGrade: student.currentGrade || 'Grade 10', gender: student.gender || 'Male', dateOfBirth: student.dateOfBirth || '', guardianName: student.guardianName || '', guardianPhone: student.guardianPhone || '', guardianEmail: student.guardianEmail || '', guardianRelation: student.guardianRelation || '', address: student.address || '', city: student.city || '', province: student.province || '', email: student.user?.email || '', phone: student.user?.phone || '', medicalConditions: student.medicalConditions || '', status: student.status || 'ACTIVE' }
       : emptyForm
   );
   const [saving, setSaving] = useState(false);
@@ -201,7 +193,6 @@ export default function StudentsView() {
   const [viewStudent, setViewStudent] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
-  const [usingMock, setUsingMock] = useState(false);
 
   const PER_PAGE = 10;
 
@@ -217,17 +208,10 @@ export default function StudentsView() {
       const data = await studentService.getAll({ page, limit: PER_PAGE, search: debouncedSearch || undefined, grade: filterGrade || undefined, status: filterStatus || undefined });
       const list = data.data || data.students || data || [];
       setStudents(Array.isArray(list) ? list : []);
-      setTotalPages(data.totalPages || Math.ceil((data.total || list.length) / PER_PAGE) || 1);
-      setUsingMock(false);
+      setTotalPages(data.pagination?.pages || data.totalPages || Math.ceil((data.pagination?.total || data.total || list.length) / PER_PAGE) || 1);
     } catch {
-      // API unavailable — use client-side filtered mock data
-      let filtered = mockStudents;
-      if (debouncedSearch) filtered = filtered.filter(s => `${s.firstName} ${s.lastName} ${s.admissionNumber}`.toLowerCase().includes(debouncedSearch.toLowerCase()));
-      if (filterGrade) filtered = filtered.filter(s => s.currentGrade === filterGrade);
-      if (filterStatus) filtered = filtered.filter(s => s.status === filterStatus);
-      setStudents(filtered);
+      setStudents([]);
       setTotalPages(1);
-      setUsingMock(true);
     } finally {
       setLoading(false);
     }
@@ -242,21 +226,15 @@ export default function StudentsView() {
       setStudents(prev => prev.filter(s => s.id !== id));
       setDeleteId(null);
     } catch {
-      if (usingMock) {
-        // Demo mode — remove locally
-        setStudents(prev => prev.filter(s => s.id !== id));
-        setDeleteId(null);
-      } else {
-        setDeleteError('Failed to delete student. Please try again.');
-      }
+      setDeleteError('Failed to delete student. Please try again.');
     }
   };
 
   const handleExport = () => {
     studentService.exportCSV().catch(() => {
-      // Fallback: export mock data as CSV
+      // Fallback: generate CSV from current page data
       const rows = [['Admission No', 'First Name', 'Last Name', 'Grade', 'Gender', 'Status', 'Guardian', 'Guardian Phone']];
-      students.forEach(s => rows.push([s.admissionNumber, s.firstName, s.lastName, s.currentGrade, s.gender, s.status, s.guardianName, s.guardianPhone]));
+      students.forEach(s => rows.push([s.admissionNumber, s.user?.firstName || s.firstName, s.user?.lastName || s.lastName, s.currentGrade, s.gender, s.status, s.guardianName, s.guardianPhone]));
       const csv = rows.map(r => r.map(c => `"${c || ''}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -290,13 +268,6 @@ export default function StudentsView() {
           </button>
         </div>
       </div>
-
-      {usingMock && (
-        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <AlertCircle size={15} />
-          Showing demo data — backend API not reachable.
-        </div>
-      )}
 
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
         <div className="stat-card">
@@ -392,10 +363,10 @@ export default function StudentsView() {
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#667eea,#764ba2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'white', fontWeight: 700, flexShrink: 0 }}>
-                            {student.firstName?.[0]}{student.lastName?.[0]}
+                            {(student.user?.firstName || student.firstName)?.[0] || '?'}{(student.user?.lastName || student.lastName)?.[0] || ''}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: '#1a202c' }}>{student.firstName} {student.lastName}</div>
+                            <div style={{ fontWeight: 600, color: '#1a202c' }}>{student.user?.firstName || student.firstName} {student.user?.lastName || student.lastName}</div>
                             <div style={{ fontSize: 12, color: '#a0aec0' }}>{student.user?.email || '—'}</div>
                           </div>
                         </div>
