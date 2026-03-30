@@ -81,6 +81,7 @@ app.use('/api/transport', require('./routes/transport.routes'));
 app.use('/api/announcements', require('./routes/announcement.routes'));
 app.use('/api/sgb', require('./routes/sgb.routes'));
 app.use('/api/reports', require('./routes/report.routes'));
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
 
 // 404 handler
 app.use((req, res) => {

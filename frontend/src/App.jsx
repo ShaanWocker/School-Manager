@@ -1,28 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import authService from './services/authService';
+import dashboardService from './services/dashboardService';
 import SettingsView from './components/SettingsView';
 import StudentsView from './components/StudentsView';
 import AttendanceView from './components/AttendanceView';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { Users, BookOpen, Calendar, DollarSign, FileText, Settings, Bell, Menu, X, ChevronDown, Search, Plus, Download, Upload, Edit, Trash2, Eye, Clock, CheckCircle, AlertCircle, TrendingUp, Award, GraduationCap, Building, UserCheck, CreditCard, MessageSquare, BarChart3, FileSpreadsheet, Library, Bus, Home, Video, Link, File, Send, Check, XCircle, Play, Pause, BookMarked, ClipboardList, Target, Brain, Pencil, Star, ThumbsUp, MessageCircle, Filter, Calendar as CalendarIcon, AlarmClock, CheckSquare, AlertTriangle } from 'lucide-react';
-
-// Simulated storage for demo
-const useStorage = (key, initialValue) => {
-  const [value, setValue] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : initialValue;
-    }
-    return initialValue;
-  });
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(value));
-    }
-  }, [key, value]);
-
-  return [value, setValue];
-};
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { Users, BookOpen, Calendar, DollarSign, FileText, Settings, Bell, Menu, X, ChevronDown, Search, Plus, Upload, Edit, Trash2, Eye, Clock, CheckCircle, AlertCircle, TrendingUp, Award, GraduationCap, Building, UserCheck, MessageSquare, FileSpreadsheet, Library, Bus, Home, Video, Link, File, Send, Check, Play, ClipboardList, Target, Star, MessageCircle, Filter, Calendar as CalendarIcon, CheckSquare, AlertTriangle } from 'lucide-react';
 
 // Mock Data
 const mockLessons = [
@@ -51,36 +34,64 @@ const mockStudentLessons = [
   { id: 4, title: 'Poetry Analysis', subject: 'English', progress: 100, completed: true, duration: '35 min' },
 ];
 
+// Normalise a backend user object so the rest of the UI (which uses lowercase
+// role strings and a flat "name" field) works without further changes.
+const normaliseUser = (user) => ({
+  ...user,
+  name: user.name || `${user.firstName} ${user.lastName}`,
+  role: (user.role || '').toLowerCase(),
+});
+
 // Main App Component
 export default function SchoolManagementSystem() {
-  const [currentUser, setCurrentUser] = useStorage('currentUser', null);
-  const [currentInstitution, setCurrentInstitution] = useStorage('currentInstitution', null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Mock institutions
-  const institutions = [
-    { id: 1, name: 'Johannesburg High School', type: 'Public School', province: 'Gauteng', students: 1245, status: 'active' },
-    { id: 2, name: 'Cape Town Academy', type: 'Private School', province: 'Western Cape', students: 856, status: 'active' },
-    { id: 3, name: 'Pretoria Tutor Centre', type: 'Tutor Centre', province: 'Gauteng', students: 324, status: 'active' }
-  ];
+  // Bootstrap session from a stored token on mount
+  useEffect(() => {
+    const bootstrap = async () => {
+      if (authService.isAuthenticated()) {
+        try {
+          const data = await authService.getCurrentUser();
+          const user = data.data || data;
+          setCurrentUser(normaliseUser(user));
+        } catch (err) {
+          console.error('Session validation failed:', err);
+          authService.logout();
+        }
+      }
+      setAuthLoading(false);
+    };
+    bootstrap();
+  }, []);
 
-  // Mock users with different roles
-  const users = [
-    { id: 1, name: 'Admin User', email: 'admin@school.co.za', role: 'super_admin', avatar: '👨‍💼' },
-    { id: 2, name: 'Principal Jane Smith', email: 'principal@school.co.za', role: 'principal', institutionId: 1, avatar: '👩‍🏫' },
-    { id: 3, name: 'Teacher John Doe', email: 'john.doe@school.co.za', role: 'teacher', institutionId: 1, avatar: '👨‍🏫', subjects: ['Mathematics', 'Physical Sciences'] },
-    { id: 4, name: 'Parent Sarah Johnson', email: 'sarah.j@email.com', role: 'parent', institutionId: 1, avatar: '👩‍👦', children: [{ id: 5, name: 'Mike Brown', grade: 'Grade 10' }] },
-    { id: 5, name: 'Student Mike Brown', email: 'mike.b@school.co.za', role: 'student', institutionId: 1, avatar: '🎓', grade: 'Grade 10', parentId: 4 }
-  ];
+  if (authLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontSize: '20px',
+        fontWeight: 600
+      }}>
+        Loading…
+      </div>
+    );
+  }
 
-  // If not logged in, show login
+  // If not logged in, show real login form
   if (!currentUser) {
-    return <LoginScreen users={users} institutions={institutions} onLogin={(user, institution) => {
-      setCurrentUser(user);
-      setCurrentInstitution(institution);
-    }} />;
+    return (
+      <LoginScreen onLogin={(user) => {
+        setCurrentUser(normaliseUser(user));
+      }} />
+    );
   }
 
   // Role-based module access with LMS additions
@@ -1110,14 +1121,14 @@ export default function SchoolManagementSystem() {
             </div>
           </div>
           
-          {currentInstitution && (
+          {currentUser.institution && (
             <div className="institution-selector">
               <div className="institution-icon">
                 <Building size={16} />
               </div>
               <div className="institution-info">
-                <div className="institution-name">{currentInstitution.name}</div>
-                <div className="institution-type">{currentInstitution.type}</div>
+                <div className="institution-name">{currentUser.institution.name}</div>
+                <div className="institution-type">{currentUser.institution.type}</div>
               </div>
               <ChevronDown size={16} />
             </div>
@@ -1203,12 +1214,8 @@ export default function SchoolManagementSystem() {
               <span className="notification-badge">5</span>
             </div>
             <button className="logout-button" onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-              localStorage.removeItem('currentUser');
-              localStorage.removeItem('currentInstitution');
+              authService.logout();
               setCurrentUser(null);
-              setCurrentInstitution(null);
             }}>
               Logout
             </button>
@@ -1216,7 +1223,7 @@ export default function SchoolManagementSystem() {
         </div>
 
         <div className="content-area">
-          {activeModule === 'dashboard' && <DashboardView role={currentUser.role} user={currentUser} institution={currentInstitution} />}
+          {activeModule === 'dashboard' && <DashboardView role={currentUser.role} user={currentUser} institution={currentUser.institution} />}
           {activeModule === 'lessons' && <LessonsView role={currentUser.role} />}
           {activeModule === 'assignments' && <AssignmentsView role={currentUser.role} />}
           {activeModule === 'exams' && <ExamsView role={currentUser.role} />}
@@ -1298,10 +1305,29 @@ export default function SchoolManagementSystem() {
   );
 }
 
-// Login Screen Component (unchanged)
-function LoginScreen({ users, institutions, onLogin }) {
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedInstitution, setSelectedInstitution] = useState(null);
+// Login Screen Component – real email + password form
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const data = await authService.login(email, password);
+      const user = data.user || data;
+      onLogin(user);
+    } catch (err) {
+      setError(
+        err.response?.data?.message || 'Login failed. Please check your credentials.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{
@@ -1316,7 +1342,7 @@ function LoginScreen({ users, institutions, onLogin }) {
         background: 'white',
         borderRadius: '24px',
         padding: '48px',
-        maxWidth: '500px',
+        maxWidth: '440px',
         width: '100%',
         boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)',
         animation: 'fadeIn 0.5s ease-out'
@@ -1346,50 +1372,35 @@ function LoginScreen({ users, institutions, onLogin }) {
             Welcome to EduManage SA
           </h1>
           <p style={{ color: '#718096', fontSize: '14px' }}>
-            Learning Management & School Administration
+            Learning Management &amp; School Administration
           </p>
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#4a5568' }}>
-            Select User (Demo)
-          </label>
-          <select
-            value={selectedUser?.id || ''}
-            onChange={(e) => {
-              const user = users.find(u => u.id === parseInt(e.target.value));
-              setSelectedUser(user);
-              if (user?.institutionId) {
-                setSelectedInstitution(institutions.find(i => i.id === user.institutionId));
-              }
-            }}
-            style={{
-              width: '100%',
+        <form onSubmit={handleSubmit}>
+          {error && (
+            <div style={{
+              marginBottom: '16px',
               padding: '12px 16px',
-              border: '2px solid rgba(102, 126, 234, 0.2)',
-              borderRadius: '12px',
-              fontSize: '14px',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="">Choose a user...</option>
-            {users.map(user => (
-              <option key={user.id} value={user.id}>
-                {user.avatar} {user.name} - {user.role.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-        </div>
+              background: '#fff5f5',
+              border: '1px solid #feb2b2',
+              borderRadius: '8px',
+              color: '#c53030',
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          )}
 
-        {selectedUser && selectedUser.role === 'super_admin' && (
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#4a5568' }}>
-              Select Institution
+              Email Address
             </label>
-            <select
-              value={selectedInstitution?.id || ''}
-              onChange={(e) => setSelectedInstitution(institutions.find(i => i.id === parseInt(e.target.value)))}
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@example.com"
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -1397,54 +1408,52 @@ function LoginScreen({ users, institutions, onLogin }) {
                 borderRadius: '12px',
                 fontSize: '14px',
                 outline: 'none',
-                cursor: 'pointer'
+                boxSizing: 'border-box'
               }}
-            >
-              <option value="">Choose an institution...</option>
-              {institutions.map(inst => (
-                <option key={inst.id} value={inst.id}>
-                  {inst.name} - {inst.type}
-                </option>
-              ))}
-            </select>
+            />
           </div>
-        )}
 
-        <button
-          onClick={() => onLogin(selectedUser, selectedInstitution)}
-          disabled={!selectedUser || (selectedUser.role === 'super_admin' && !selectedInstitution)}
-          style={{
-            width: '100%',
-            padding: '14px',
-            background: selectedUser ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e2e8f0',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: selectedUser ? 'pointer' : 'not-allowed',
-            transition: 'all 0.2s'
-          }}
-        >
-          Login to System
-        </button>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#4a5568' }}>
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '2px solid rgba(102, 126, 234, 0.2)',
+                borderRadius: '12px',
+                fontSize: '14px',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
 
-        <div style={{
-          marginTop: '24px',
-          padding: '16px',
-          background: 'rgba(102, 126, 234, 0.05)',
-          borderRadius: '12px',
-          fontSize: '13px',
-          color: '#4a5568'
-        }}>
-          <strong style={{ display: 'block', marginBottom: '8px' }}>Demo Features:</strong>
-          <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
-            <li>Learning Management System (LMS)</li>
-            <li>Student & Parent Portals</li>
-            <li>Teacher Lesson Planning</li>
-            <li>Assignment & Exam Management</li>
-          </ul>
-        </div>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '14px',
+              background: loading ? '#a0aec0' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -1915,34 +1924,41 @@ function TeacherDashboard({ user, institution }) {
   );
 }
 
-// Admin Dashboard (original)
+// Admin Dashboard – fetches real stats from /api/dashboard/summary
 function AdminDashboard({ institution }) {
-  const statsData = {
-    students: { value: 1245, change: '+8%', trend: 'up' },
-    teachers: { value: 87, change: '+3%', trend: 'up' },
-    attendance: { value: '94%', change: '+2%', trend: 'up' },
-    revenue: { value: 'R2.4M', change: '+12%', trend: 'up' }
-  };
+  const [summary, setSummary] = useState(null);
+  const [dashLoading, setDashLoading] = useState(true);
+  const [dashError, setDashError] = useState('');
 
-  const attendanceData = [
-    { month: 'Jan', rate: 92 },
-    { month: 'Feb', rate: 94 },
-    { month: 'Mar', rate: 93 },
-    { month: 'Apr', rate: 95 },
-    { month: 'May', rate: 94 },
-    { month: 'Jun', rate: 96 }
-  ];
+  useEffect(() => {
+    dashboardService.getSummary()
+      .then((data) => {
+        setSummary(data.data || data);
+        setDashLoading(false);
+      })
+      .catch((err) => {
+        setDashError(err.response?.data?.message || 'Failed to load dashboard data.');
+        setDashLoading(false);
+      });
+  }, []);
 
-  const COLORS = ['#667eea', '#764ba2', '#f59e0b', '#10b981', '#ef4444'];
+  const fmtNum = (n) => (n == null ? '—' : n.toLocaleString());
+  const fmtCurrency = (n) => (n == null ? '—' : `R${Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
         <p className="page-subtitle">
-          Welcome back! Here's what's happening at {institution?.name}
+          Welcome back! Here's what's happening at {institution?.name || 'your institution'}
         </p>
       </div>
+
+      {dashError && (
+        <div style={{ padding: '16px', background: '#fff5f5', border: '1px solid #feb2b2', borderRadius: '8px', color: '#c53030', marginBottom: '24px' }}>
+          {dashError}
+        </div>
+      )}
 
       <div className="stats-grid">
         <div className="stat-card">
@@ -1950,13 +1966,9 @@ function AdminDashboard({ institution }) {
             <div className="stat-icon blue">
               <Users size={24} />
             </div>
-            <div className={`stat-trend ${statsData.students.trend}`}>
-              <TrendingUp size={14} />
-              {statsData.students.change}
-            </div>
           </div>
           <div className="stat-label">Total Students</div>
-          <div className="stat-value">{statsData.students.value}</div>
+          <div className="stat-value">{dashLoading ? '…' : fmtNum(summary?.studentsCount)}</div>
         </div>
 
         <div className="stat-card">
@@ -1964,27 +1976,19 @@ function AdminDashboard({ institution }) {
             <div className="stat-icon green">
               <GraduationCap size={24} />
             </div>
-            <div className={`stat-trend ${statsData.teachers.trend}`}>
-              <TrendingUp size={14} />
-              {statsData.teachers.change}
-            </div>
           </div>
           <div className="stat-label">Teaching Staff</div>
-          <div className="stat-value">{statsData.teachers.value}</div>
+          <div className="stat-value">{dashLoading ? '…' : fmtNum(summary?.teachersCount)}</div>
         </div>
 
         <div className="stat-card">
           <div className="stat-header">
             <div className="stat-icon orange">
-              <UserCheck size={24} />
-            </div>
-            <div className={`stat-trend ${statsData.attendance.trend}`}>
-              <TrendingUp size={14} />
-              {statsData.attendance.change}
+              <BookOpen size={24} />
             </div>
           </div>
-          <div className="stat-label">Attendance Rate</div>
-          <div className="stat-value">{statsData.attendance.value}</div>
+          <div className="stat-label">Classes</div>
+          <div className="stat-value">{dashLoading ? '…' : fmtNum(summary?.classesCount)}</div>
         </div>
 
         <div className="stat-card">
@@ -1992,35 +1996,32 @@ function AdminDashboard({ institution }) {
             <div className="stat-icon red">
               <DollarSign size={24} />
             </div>
-            <div className={`stat-trend ${statsData.revenue.trend}`}>
-              <TrendingUp size={14} />
-              {statsData.revenue.change}
+          </div>
+          <div className="stat-label">Revenue (completed payments)</div>
+          <div className="stat-value">{dashLoading ? '…' : fmtCurrency(summary?.paymentsTotal)}</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-header">
+            <div className="stat-icon orange">
+              <AlertCircle size={24} />
             </div>
           </div>
-          <div className="stat-label">Revenue (YTD)</div>
-          <div className="stat-value">{statsData.revenue.value}</div>
+          <div className="stat-label">Outstanding Balance</div>
+          <div className="stat-value">{dashLoading ? '…' : fmtCurrency(summary?.outstandingBalanceTotal)}</div>
         </div>
-      </div>
 
-      <div className="chart-card">
-        <div className="chart-header">
-          <h3 className="chart-title">Attendance Trends</h3>
-          <div className="chart-actions">
-            <button className="action-button">
-              <Download size={14} />
-              Export
-            </button>
+        {summary?.institutionsCount !== undefined && (
+          <div className="stat-card">
+            <div className="stat-header">
+              <div className="stat-icon blue">
+                <Building size={24} />
+              </div>
+            </div>
+            <div className="stat-label">Institutions</div>
+            <div className="stat-value">{fmtNum(summary.institutionsCount)}</div>
           </div>
-        </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={attendanceData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="month" stroke="#718096" />
-            <YAxis stroke="#718096" />
-            <Tooltip />
-            <Line type="monotone" dataKey="rate" stroke="#667eea" strokeWidth={3} dot={{ fill: '#667eea', r: 6 }} />
-          </LineChart>
-        </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
@@ -3171,7 +3172,6 @@ function QuizTakingModal({ onClose }) {
                   width: '40px',
                   height: '40px',
                   borderRadius: '8px',
-                  border: 'none',
                   background: answers[questions[idx].id] !== undefined 
                     ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
                     : idx === currentQuestion 
@@ -3196,6 +3196,7 @@ function QuizTakingModal({ onClose }) {
 
 // Create Exam Modal
 function CreateExamModal({ onClose }) {
+  // eslint-disable-next-line no-unused-vars
   const [questions, setQuestions] = useState([]);
 
   return (
