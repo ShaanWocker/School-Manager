@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserCheck, Calendar, Filter, AlertCircle, Check, X, Clock, ChevronLeft, ChevronRight, Plus, BarChart3 } from 'lucide-react';
 import { attendanceService } from '../services/attendanceService';
+import { classService } from '../services/classService';
 
 const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED', 'SICK'];
 const STATUS_COLORS = {
@@ -11,40 +12,7 @@ const STATUS_COLORS = {
   SICK: { badge: 'purple', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
 };
 
-const MOCK_CLASSES = ['10A', '10B', '11A', '11B', '12A', '12B', '9A', '9B', '8A', '8B'];
-
-const MOCK_STUDENTS_BY_CLASS = {
-  '10A': [
-    { id: 's1', firstName: 'Sipho', lastName: 'Dlamini', admissionNumber: 'ADM2024001' },
-    { id: 's2', firstName: 'Nomsa', lastName: 'Khumalo', admissionNumber: 'ADM2024002' },
-    { id: 's3', firstName: 'Thabo', lastName: 'Sithole', admissionNumber: 'ADM2024005' },
-    { id: 's6', firstName: 'Ayanda', lastName: 'Zulu', admissionNumber: 'ADM2024006' },
-    { id: 's9', firstName: 'Lerato', lastName: 'Mokoena', admissionNumber: 'ADM2024009' },
-    { id: 's10', firstName: 'Bongani', lastName: 'Ntuli', admissionNumber: 'ADM2024010' },
-  ],
-  '11A': [
-    { id: 's7', firstName: 'Kagiso', lastName: 'Mokoena', admissionNumber: 'ADM2024007' },
-    { id: 's11', firstName: 'Zanele', lastName: 'Ndlovu', admissionNumber: 'ADM2024011' },
-    { id: 's12', firstName: 'Lebo', lastName: 'Molefe', admissionNumber: 'ADM2024012' },
-  ],
-  default: [
-    { id: 's4', firstName: 'Zanele', lastName: 'Ndlovu', admissionNumber: 'ADM2024004' },
-    { id: 's5', firstName: 'Precious', lastName: 'Mahlangu', admissionNumber: 'ADM2024008' },
-  ],
-};
-
 const today = new Date().toISOString().split('T')[0];
-
-const mockAttendanceRecords = [
-  { id: 'a1', date: today, status: 'PRESENT', student: { firstName: 'Sipho', lastName: 'Dlamini', admissionNumber: 'ADM2024001' }, className: '10A', remarks: '' },
-  { id: 'a2', date: today, status: 'ABSENT', student: { firstName: 'Nomsa', lastName: 'Khumalo', admissionNumber: 'ADM2024002' }, className: '10A', remarks: 'No notification' },
-  { id: 'a3', date: today, status: 'LATE', student: { firstName: 'Thabo', lastName: 'Sithole', admissionNumber: 'ADM2024005' }, className: '10A', remarks: 'Arrived 15 min late' },
-  { id: 'a4', date: today, status: 'PRESENT', student: { firstName: 'Kagiso', lastName: 'Mokoena', admissionNumber: 'ADM2024007' }, className: '11A', remarks: '' },
-  { id: 'a5', date: today, status: 'SICK', student: { firstName: 'Zanele', lastName: 'Ndlovu', admissionNumber: 'ADM2024004' }, className: '11A', remarks: 'Medical certificate received' },
-  { id: 'a6', date: today, status: 'PRESENT', student: { firstName: 'Ayanda', lastName: 'Zulu', admissionNumber: 'ADM2024006' }, className: '10A', remarks: '' },
-  { id: 'a7', date: today, status: 'EXCUSED', student: { firstName: 'Lebo', lastName: 'Molefe', admissionNumber: 'ADM2024003' }, className: '11A', remarks: 'Family emergency' },
-  { id: 'a8', date: today, status: 'PRESENT', student: { firstName: 'Precious', lastName: 'Mahlangu', admissionNumber: 'ADM2024008' }, className: '9A', remarks: '' },
-];
 
 function StatusIcon({ status }) {
   if (status === 'PRESENT') return <Check size={14} />;
@@ -132,7 +100,7 @@ function AttendanceRecordsTab({ records, loading }) {
             return (
               <tr key={record.id}>
                 <td style={{ fontWeight: 600 }}>
-                  {record.student ? `${record.student.firstName} ${record.student.lastName}` : '—'}
+                  {record.student ? `${record.student.user?.firstName || record.student.firstName || ''} ${record.student.user?.lastName || record.student.lastName || ''}`.trim() || '—' : '—'}
                 </td>
                 <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
                   {record.student?.admissionNumber || '—'}
@@ -155,23 +123,41 @@ function AttendanceRecordsTab({ records, loading }) {
   );
 }
 
-function MarkAttendanceTab({ onMarked, usingMock }) {
-  const [selectedClass, setSelectedClass] = useState(MOCK_CLASSES[0]);
+function MarkAttendanceTab({ classes, onMarked }) {
+  const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedDate, setSelectedDate] = useState(today);
+  const [students, setStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
   const [attendanceMap, setAttendanceMap] = useState({});
   const [remarksMap, setRemarksMap] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
 
-  const studentsForClass = MOCK_STUDENTS_BY_CLASS[selectedClass] || MOCK_STUDENTS_BY_CLASS.default;
+  useEffect(() => {
+    if (classes.length > 0 && !selectedClassId) {
+      setSelectedClassId(classes[0].id);
+    }
+  }, [classes, selectedClassId]);
 
   useEffect(() => {
-    const studentList = MOCK_STUDENTS_BY_CLASS[selectedClass] || MOCK_STUDENTS_BY_CLASS.default;
-    const initial = {};
-    studentList.forEach(s => { initial[s.id] = 'PRESENT'; });
-    setAttendanceMap(initial);
-    setRemarksMap({});
-  }, [selectedClass]);
+    if (!selectedClassId) {
+      setStudents([]);
+      return;
+    }
+    setLoadingStudents(true);
+    classService.getStudents(selectedClassId)
+      .then(data => {
+        const list = data.data || data || [];
+        const studentList = Array.isArray(list) ? list : [];
+        setStudents(studentList);
+        const initial = {};
+        studentList.forEach(s => { initial[s.id] = 'PRESENT'; });
+        setAttendanceMap(initial);
+        setRemarksMap({});
+      })
+      .catch(() => setStudents([]))
+      .finally(() => setLoadingStudents(false));
+  }, [selectedClassId]);
 
   const setStatus = (studentId, status) => {
     setAttendanceMap(prev => ({ ...prev, [studentId]: status }));
@@ -183,7 +169,7 @@ function MarkAttendanceTab({ onMarked, usingMock }) {
 
   const markAll = status => {
     const updated = {};
-    studentsForClass.forEach(s => { updated[s.id] = status; });
+    students.forEach(s => { updated[s.id] = status; });
     setAttendanceMap(updated);
   };
 
@@ -191,22 +177,18 @@ function MarkAttendanceTab({ onMarked, usingMock }) {
     e.preventDefault();
     setSaving(true);
     setSaveMsg(null);
-    const attendanceList = studentsForClass.map(s => ({
+    const records = students.map(s => ({
       studentId: s.id,
       status: attendanceMap[s.id] || 'PRESENT',
       remarks: remarksMap[s.id] || '',
     }));
     try {
-      await attendanceService.markBulkAttendance(selectedClass, selectedDate, attendanceList);
-      setSaveMsg({ type: 'success', text: `Attendance saved for ${studentsForClass.length} students in class ${selectedClass} on ${new Date(selectedDate).toLocaleDateString('en-ZA')}.` });
+      await attendanceService.markBulkAttendance(selectedClassId, selectedDate, records);
+      const className = classes.find(c => c.id === selectedClassId)?.name || selectedClassId;
+      setSaveMsg({ type: 'success', text: `Attendance saved for ${students.length} students in class ${className} on ${new Date(selectedDate).toLocaleDateString('en-ZA')}.` });
       if (onMarked) onMarked();
-    } catch {
-      if (usingMock) {
-        // Demo mode — API not available, show informational message
-        setSaveMsg({ type: 'info', text: `Demo mode: Attendance recorded locally for ${studentsForClass.length} students in class ${selectedClass}. Connect the backend to persist this data.` });
-      } else {
-        setSaveMsg({ type: 'error', text: 'Failed to save attendance. Please check your connection and try again.' });
-      }
+    } catch (err) {
+      setSaveMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to save attendance. Please check your connection and try again.' });
     } finally {
       setSaving(false);
     }
@@ -214,15 +196,16 @@ function MarkAttendanceTab({ onMarked, usingMock }) {
 
   const presentCount = Object.values(attendanceMap).filter(v => v === 'PRESENT').length;
   const absentCount = Object.values(attendanceMap).filter(v => v === 'ABSENT').length;
-  const otherCount = studentsForClass.length - presentCount - absentCount;
+  const otherCount = students.length - presentCount - absentCount;
 
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 16, alignItems: 'flex-end', marginBottom: 24 }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Class</label>
-          <select className="form-select" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}>
-            {MOCK_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+          <select className="form-select" value={selectedClassId} onChange={e => setSelectedClassId(e.target.value)}>
+            {classes.length === 0 && <option value="">No classes available</option>}
+            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -244,7 +227,7 @@ function MarkAttendanceTab({ onMarked, usingMock }) {
           { label: 'Present', value: presentCount, color: '#10b981' },
           { label: 'Absent', value: absentCount, color: '#ef4444' },
           { label: 'Other', value: otherCount, color: '#f59e0b' },
-          { label: 'Total', value: studentsForClass.length, color: '#667eea' },
+          { label: 'Total', value: students.length, color: '#667eea' },
         ].map(s => (
           <div key={s.label} style={{ background: 'white', borderRadius: 10, padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', flex: 1, textAlign: 'center' }}>
             <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
@@ -254,16 +237,24 @@ function MarkAttendanceTab({ onMarked, usingMock }) {
       </div>
 
       <div style={{ display: 'grid', gap: 12 }}>
-        {studentsForClass.map(student => {
+        {loadingStudents ? (
+          <div style={{ padding: '40px 0', textAlign: 'center', color: '#718096' }}>⏳ Loading students…</div>
+        ) : students.length === 0 ? (
+          <div style={{ padding: '40px 0', textAlign: 'center', color: '#718096' }}>
+            {selectedClassId ? 'No students found in this class.' : 'Select a class to mark attendance.'}
+          </div>
+        ) : students.map(student => {
           const status = attendanceMap[student.id] || 'PRESENT';
           const sc = STATUS_COLORS[status];
+          const firstName = student.user?.firstName || student.firstName || '';
+          const lastName = student.user?.lastName || student.lastName || '';
           return (
             <div key={student.id} style={{ background: 'white', borderRadius: 12, padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: `2px solid ${sc.bg}`, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg,${sc.color},${sc.color}88)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'white', fontWeight: 700, flexShrink: 0 }}>
-                {student.firstName[0]}{student.lastName[0]}
+                {firstName[0] || '?'}{lastName[0] || ''}
               </div>
               <div style={{ flex: 1, minWidth: 140 }}>
-                <div style={{ fontWeight: 600, color: '#1a202c' }}>{student.firstName} {student.lastName}</div>
+                <div style={{ fontWeight: 600, color: '#1a202c' }}>{firstName} {lastName}</div>
                 <div style={{ fontSize: 12, color: '#a0aec0', fontFamily: 'monospace' }}>{student.admissionNumber}</div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -314,7 +305,7 @@ function MarkAttendanceTab({ onMarked, usingMock }) {
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
         <button type="submit" className="action-button primary" disabled={saving}>
           <UserCheck size={14} />
-          {saving ? 'Saving…' : `Save Attendance (${studentsForClass.length} students)`}
+          {saving ? 'Saving…' : `Save Attendance (${students.length} students)`}
         </button>
       </div>
     </form>
@@ -325,32 +316,36 @@ export default function AttendanceView() {
   const [activeTab, setActiveTab] = useState('records');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState([]);
   const [filterDate, setFilterDate] = useState(today);
   const [filterClass, setFilterClass] = useState('');
-  const [usingMock, setUsingMock] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const PER_PAGE = 15;
+
+  useEffect(() => {
+    classService.getAll({ limit: 100 })
+      .then(data => {
+        const list = data.data || data || [];
+        setClasses(Array.isArray(list) ? list : []);
+      })
+      .catch(() => setClasses([]));
+  }, []);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit: PER_PAGE };
       if (filterDate) params.date = filterDate;
-      if (filterClass) params.class = filterClass;
+      if (filterClass) params.classId = filterClass;
       const data = await attendanceService.getAll(params);
       const list = data.data || data.attendance || data || [];
       setRecords(Array.isArray(list) ? list : []);
-      setTotalPages(data.totalPages || Math.ceil((data.total || list.length) / PER_PAGE) || 1);
-      setUsingMock(false);
+      setTotalPages(data.pagination?.pages || data.totalPages || Math.ceil((data.pagination?.total || data.total || list.length) / PER_PAGE) || 1);
     } catch {
-      let filtered = mockAttendanceRecords;
-      if (filterDate) filtered = filtered.filter(r => r.date === filterDate);
-      if (filterClass) filtered = filtered.filter(r => r.className === filterClass);
-      setRecords(filtered);
+      setRecords([]);
       setTotalPages(1);
-      setUsingMock(true);
     } finally {
       setLoading(false);
     }
@@ -370,13 +365,6 @@ export default function AttendanceView() {
           Mark Attendance
         </button>
       </div>
-
-      {usingMock && (
-        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <AlertCircle size={15} />
-          Showing demo data — backend API not reachable.
-        </div>
-      )}
 
       <AttendanceStatCards records={records} />
 
@@ -417,7 +405,7 @@ export default function AttendanceView() {
                 style={{ padding: '7px 12px', width: 130, marginBottom: 0 }}
               >
                 <option value="">All Classes</option>
-                {MOCK_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <button
                 className="action-button"
@@ -448,7 +436,7 @@ export default function AttendanceView() {
             </>
           ) : (
             <div style={{ padding: '0 24px 24px' }}>
-              <MarkAttendanceTab onMarked={() => { setActiveTab('records'); loadRecords(); }} usingMock={usingMock} />
+              <MarkAttendanceTab classes={classes} onMarked={() => { setActiveTab('records'); loadRecords(); }} />
             </div>
           )}
         </div>
