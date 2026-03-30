@@ -497,6 +497,7 @@ export default function LearnerRegistrationWizard({ onClose, onSuccess }) {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const isLastStep = step === STEPS.length - 1;
   const isDocStep = STEPS[step].id === 'documents';
 
