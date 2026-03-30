@@ -150,11 +150,23 @@ GRANT ALL PRIVILEGES ON DATABASE edumanage_db TO edumanage;
 \q
 ```
 
-3. **Run Migrations**
+3. **Run Migrations and Seed**
+
+> The Prisma schema lives at `prisma/schema.prisma` (one level above `backend/`).
+> All commands below must be run from the `backend/` directory.
 
 ```bash
 cd backend
-npx prisma migrate dev
+npm install
+
+# Generate Prisma Client (outputs to backend/node_modules/@prisma/client)
+npm run prisma:generate
+
+# Apply database migrations
+npm run prisma:migrate
+
+# Seed the database (set NODE_ENV=development to enable cleanup of existing data)
+NODE_ENV=development npm run prisma:seed
 ```
 
 ### Option 2: Docker PostgreSQL

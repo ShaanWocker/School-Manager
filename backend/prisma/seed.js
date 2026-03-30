@@ -32,7 +32,7 @@ async function main() {
     await prisma.transportAssignment.deleteMany();
     await prisma.transportRoute.deleteMany();
     await prisma.announcement.deleteMany();
-    await prisma.sgbMember.deleteMany();
+    await prisma.sGBMember.deleteMany();
     await prisma.parent.deleteMany();
     await prisma.student.deleteMany();
     await prisma.teacher.deleteMany();
