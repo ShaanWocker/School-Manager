@@ -37,15 +37,15 @@ echo "Installing backend dependencies..."
 npm install
 
 # Copy environment file
-if [ ! -f .env ]; then
+if [ ! -f ../.env ]; then
     echo "Creating .env file from template..."
-    cp .env.example .env
+    cp ../.env.example ../.env
     echo -e "${GREEN}✓ Created .env file. Please update with your configuration.${NC}"
 fi
 
 # Generate Prisma Client
 echo "Generating Prisma Client..."
-npx prisma generate
+npm run prisma:generate
 
 # Create database and run migrations
 echo ""
@@ -53,7 +53,7 @@ read -p "Do you want to create the database and run migrations? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Running database migrations..."
-    npx prisma migrate dev --name init
+    npm run prisma:migrate
     
     echo ""
     read -p "Do you want to seed the database with demo data? (y/n) " -n 1 -r

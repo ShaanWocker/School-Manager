@@ -10,6 +10,10 @@ Your complete, production-ready school management system is now in the `fullstac
 
 ```
 fullstack-app/
+├── prisma/
+│   ├── schema.prisma              ✅ 30+ tables (single source of truth)
+│   └── seed.js                    ✅ Demo data
+├── .env.example                   ← Environment template (copy to .env at repo root)
 ├── backend/                    ← Node.js + Express API
 │   ├── src/
 │   │   ├── routes/
@@ -18,10 +22,6 @@ fullstack-app/
 │   │   ├── middleware/
 │   │   │   └── auth.middleware.js     ✅ Complete
 │   │   └── server.js                  ✅ Complete
-│   ├── prisma/
-│   │   ├── schema.prisma              ✅ 30+ tables
-│   │   └── seed.js                    ✅ Demo data
-│   ├── .env.example
 │   └── package.json
 │
 ├── frontend/                   ← React Application
@@ -43,7 +43,7 @@ fullstack-app/
 │   └── README.md
 │
 ├── prisma/
-│   └── schema.prisma           ← Shared database schema
+│   └── schema.prisma           ← Shared database schema (kept for reference)
 │
 ├── docker-compose.yml          ✅ One-command deployment
 ├── setup.sh                    ✅ Automated setup
@@ -62,13 +62,13 @@ fullstack-app/
 cd fullstack-app
 
 # Copy environment file
-cp backend/.env.example backend/.env
+cp .env.example .env
 
 # Start all services
 docker-compose up -d
 
 # Wait 30 seconds, then setup database
-docker-compose exec backend npx prisma migrate deploy
+docker-compose exec backend npx prisma migrate deploy --schema=../prisma/schema.prisma
 docker-compose exec backend npm run prisma:seed
 ```
 
@@ -129,15 +129,15 @@ cd backend
 # Install dependencies
 npm install
 
-# Setup environment
-cp .env.example .env
-# Edit .env with your database credentials
+# Setup environment (at repo root)
+cp ../.env.example ../.env
+# Edit ../.env with your database credentials
 
 # Generate Prisma Client
-npx prisma generate
+npm run prisma:generate
 
 # Run migrations
-npx prisma migrate dev
+npm run prisma:migrate
 
 # Seed database with demo data
 npm run prisma:seed
@@ -328,7 +328,7 @@ sudo systemctl status postgresql
 # Restart PostgreSQL
 sudo systemctl restart postgresql
 
-# Verify DATABASE_URL in backend/.env
+# Verify DATABASE_URL in .env (repo root)
 ```
 
 ### Port already in use
@@ -337,7 +337,7 @@ sudo systemctl restart postgresql
 # Kill process on port 5000
 lsof -ti:5000 | xargs kill -9
 
-# Or change PORT in backend/.env
+# Or change PORT in .env (repo root)
 PORT=5001
 ```
 
@@ -351,8 +351,8 @@ PORT=5001
 
 ```bash
 cd backend
-npx prisma generate
-npx prisma migrate dev
+npm run prisma:generate
+npm run prisma:migrate
 ```
 
 ---
