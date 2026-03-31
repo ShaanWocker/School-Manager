@@ -459,7 +459,7 @@ router.put('/:id', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF')
 
 // ============================================
 // @route   DELETE /api/students/:id
-// @desc    Delete student (soft delete)
+// @desc    Delete student permanently from the database
 // @access  Private (Admin, Principal)
 // ============================================
 
@@ -476,22 +476,22 @@ router.delete('/:id', protect, authorize('SUPER_ADMIN', 'PRINCIPAL'), async (req
       });
     }
 
-    // Soft delete - update status and deactivate user
+    // Hard delete - remove student and associated user from the database
     await prisma.$transaction(async (tx) => {
-      await tx.student.update({
-        where: { id: req.params.id },
-        data: { status: 'INACTIVE' }
+      // Delete the student record (cascades to attendance, grades, etc.)
+      await tx.student.delete({
+        where: { id: req.params.id }
       });
 
-      await tx.user.update({
-        where: { id: student.userId },
-        data: { isActive: false }
+      // Delete the associated user account
+      await tx.user.delete({
+        where: { id: student.userId }
       });
     });
 
     res.json({
       success: true,
-      message: 'Student deactivated successfully'
+      message: 'Student deleted successfully'
     });
   } catch (error) {
     next(error);

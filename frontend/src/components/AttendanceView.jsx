@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserCheck, Calendar, Filter, AlertCircle, Check, X, Clock, ChevronLeft, ChevronRight, Plus, BarChart3 } from 'lucide-react';
+import { UserCheck, Calendar, Filter, AlertCircle, Check, X, Clock, ChevronLeft, ChevronRight, Plus, BarChart3, Search } from 'lucide-react';
 import { attendanceService } from '../services/attendanceService';
 import { classService } from '../services/classService';
 
@@ -319,6 +319,7 @@ export default function AttendanceView() {
   const [classes, setClasses] = useState([]);
   const [filterDate, setFilterDate] = useState(today);
   const [filterClass, setFilterClass] = useState('');
+  const [filterStudent, setFilterStudent] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -339,6 +340,7 @@ export default function AttendanceView() {
       const params = { page, limit: PER_PAGE };
       if (filterDate) params.date = filterDate;
       if (filterClass) params.classId = filterClass;
+      if (filterStudent) params.studentName = filterStudent;
       const data = await attendanceService.getAll(params);
       const list = data.data || data.attendance || data || [];
       setRecords(Array.isArray(list) ? list : []);
@@ -349,7 +351,7 @@ export default function AttendanceView() {
     } finally {
       setLoading(false);
     }
-  }, [page, filterDate, filterClass]);
+  }, [page, filterDate, filterClass, filterStudent]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
@@ -390,6 +392,16 @@ export default function AttendanceView() {
           {activeTab === 'records' && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Search size={16} style={{ color: '#a0aec0' }} />
+                <input
+                  type="text"
+                  placeholder="Search student name…"
+                  value={filterStudent}
+                  onChange={e => { setFilterStudent(e.target.value); setPage(1); }}
+                  style={{ padding: '7px 10px', border: '2px solid rgba(102,126,234,0.2)', borderRadius: 8, fontSize: 14, outline: 'none', width: 180 }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Calendar size={16} style={{ color: '#a0aec0' }} />
                 <input
                   type="date"
@@ -409,7 +421,7 @@ export default function AttendanceView() {
               </select>
               <button
                 className="action-button"
-                onClick={() => { setFilterDate(''); setFilterClass(''); setPage(1); }}
+                onClick={() => { setFilterDate(''); setFilterClass(''); setFilterStudent(''); setPage(1); }}
                 style={{ padding: '7px 12px', fontSize: 13 }}
               >
                 <Filter size={13} /> Clear

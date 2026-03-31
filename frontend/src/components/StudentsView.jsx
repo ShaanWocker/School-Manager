@@ -74,6 +74,21 @@ function StudentModal({ student, onClose }) {
   );
 }
 
+function StudentField({ label, name, type, required, options, form, onChange }) {
+  return (
+    <div className="form-group">
+      <label className="form-label">{label}{required && ' *'}</label>
+      {options ? (
+        <select className="form-select" name={name} value={form[name]} onChange={onChange} required={required}>
+          {options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input className="form-input" type={type || 'text'} name={name} value={form[name]} onChange={onChange} required={required} />
+      )}
+    </div>
+  );
+}
+
 function StudentFormModal({ student, onClose, onSave }) {
   const isEdit = Boolean(student?.id);
   const [form, setForm] = useState(
@@ -84,7 +99,10 @@ function StudentFormModal({ student, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -104,19 +122,6 @@ function StudentFormModal({ student, onClose, onSave }) {
     }
   };
 
-  const Field = ({ label, name, type = 'text', required, options }) => (
-    <div className="form-group">
-      <label className="form-label">{label}{required && ' *'}</label>
-      {options ? (
-        <select className="form-select" name={name} value={form[name]} onChange={handleChange} required={required}>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      ) : (
-        <input className="form-input" type={type} name={name} value={form[name]} onChange={handleChange} required={required} />
-      )}
-    </div>
-  );
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" style={{ maxWidth: '680px', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
@@ -127,32 +132,32 @@ function StudentFormModal({ student, onClose, onSave }) {
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <Field label="First Name" name="firstName" required />
-            <Field label="Last Name" name="lastName" required />
-            <Field label="Grade" name="currentGrade" options={GRADES} required />
-            <Field label="Gender" name="gender" options={GENDERS} required />
-            <Field label="Date of Birth" name="dateOfBirth" type="date" />
-            <Field label="Status" name="status" options={STATUSES} />
-            <Field label="Email" name="email" type="email" />
-            <Field label="Phone" name="phone" type="tel" />
+            <StudentField label="First Name" name="firstName" required form={form} onChange={handleChange} />
+            <StudentField label="Last Name" name="lastName" required form={form} onChange={handleChange} />
+            <StudentField label="Grade" name="currentGrade" options={GRADES} required form={form} onChange={handleChange} />
+            <StudentField label="Gender" name="gender" options={GENDERS} required form={form} onChange={handleChange} />
+            <StudentField label="Date of Birth" name="dateOfBirth" type="date" form={form} onChange={handleChange} />
+            <StudentField label="Status" name="status" options={STATUSES} form={form} onChange={handleChange} />
+            <StudentField label="Email" name="email" type="email" form={form} onChange={handleChange} />
+            <StudentField label="Phone" name="phone" type="tel" form={form} onChange={handleChange} />
           </div>
 
           <div style={{ marginTop: 8, borderTop: '1px solid rgba(102,126,234,0.1)', paddingTop: 16, marginBottom: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#667eea', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Guardian Information</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              <Field label="Guardian Name" name="guardianName" />
-              <Field label="Guardian Phone" name="guardianPhone" type="tel" />
-              <Field label="Guardian Email" name="guardianEmail" type="email" />
-              <Field label="Relationship" name="guardianRelation" />
+              <StudentField label="Guardian Name" name="guardianName" form={form} onChange={handleChange} />
+              <StudentField label="Guardian Phone" name="guardianPhone" type="tel" form={form} onChange={handleChange} />
+              <StudentField label="Guardian Email" name="guardianEmail" type="email" form={form} onChange={handleChange} />
+              <StudentField label="Relationship" name="guardianRelation" form={form} onChange={handleChange} />
             </div>
           </div>
 
           <div style={{ borderTop: '1px solid rgba(102,126,234,0.1)', paddingTop: 16, marginBottom: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#667eea', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</div>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0 16px' }}>
-              <Field label="Street Address" name="address" />
-              <Field label="City" name="city" />
-              <Field label="Province" name="province" />
+              <StudentField label="Street Address" name="address" form={form} onChange={handleChange} />
+              <StudentField label="City" name="city" form={form} onChange={handleChange} />
+              <StudentField label="Province" name="province" form={form} onChange={handleChange} />
             </div>
           </div>
 
@@ -189,7 +194,6 @@ export default function StudentsView() {
   const [filterStatus, setFilterStatus] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showRegistrationWizard, setShowRegistrationWizard] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [viewStudent, setViewStudent] = useState(null);
@@ -267,10 +271,6 @@ export default function StudentsView() {
           <button className="action-button" onClick={() => setShowRegistrationWizard(true)} style={{ background: 'linear-gradient(135deg,#667eea,#764ba2)', color: '#fff', border: 'none' }}>
             <ClipboardList size={14} />
             New Registration
-          </button>
-          <button className="action-button primary" onClick={() => setShowAddModal(true)}>
-            <Plus size={14} />
-            Add Student
           </button>
         </div>
       </div>
@@ -461,11 +461,11 @@ export default function StudentsView() {
 
       {viewStudent && <StudentModal student={viewStudent} onClose={() => setViewStudent(null)} />}
 
-      {(showAddModal || editStudent) && (
+      {editStudent && (
         <StudentFormModal
           student={editStudent}
-          onClose={() => { setShowAddModal(false); setEditStudent(null); }}
-          onSave={() => { setShowAddModal(false); setEditStudent(null); loadStudents(); }}
+          onClose={() => { setEditStudent(null); }}
+          onSave={() => { setEditStudent(null); loadStudents(); }}
         />
       )}
 

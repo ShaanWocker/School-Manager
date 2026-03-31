@@ -199,6 +199,7 @@ router.get('/', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF', 'T
       startDate,
       endDate,
       status,
+      studentName,
       page = 1,
       limit = 20,
       sortBy = 'date',
@@ -216,6 +217,19 @@ router.get('/', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF', 'T
       where.date = {
         gte: new Date(startDate),
         lte: new Date(endDate)
+      };
+    }
+
+    // Filter by student name (search across first and last name)
+    if (studentName) {
+      where.student = {
+        ...(where.student || {}),
+        user: {
+          OR: [
+            { firstName: { contains: studentName, mode: 'insensitive' } },
+            { lastName: { contains: studentName, mode: 'insensitive' } }
+          ]
+        }
       };
     }
 
