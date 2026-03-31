@@ -4,6 +4,13 @@ import dashboardService from './services/dashboardService';
 import SettingsView from './components/SettingsView';
 import StudentsView from './components/StudentsView';
 import AttendanceView from './components/AttendanceView';
+import TeacherDashboard from './components/teacher/TeacherDashboard';
+import TeacherTimetable from './components/teacher/TeacherTimetable';
+import TeacherClasses from './components/teacher/TeacherClasses';
+import TeacherAttendance from './components/teacher/TeacherAttendance';
+import TeacherAssignments from './components/teacher/TeacherAssignments';
+import TeacherGrades from './components/teacher/TeacherGrades';
+import TeacherProfile from './components/teacher/TeacherProfile';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Users, BookOpen, Calendar, DollarSign, FileText, Settings, Bell, Menu, X, ChevronDown, Search, Plus, Upload, Edit, Trash2, Eye, Clock, CheckCircle, AlertCircle, TrendingUp, Award, GraduationCap, Building, UserCheck, MessageSquare, FileSpreadsheet, Library, Bus, Home, Video, Link, File, Send, Check, Play, ClipboardList, Target, Star, MessageCircle, Filter, Calendar as CalendarIcon, CheckSquare, AlertTriangle } from 'lucide-react';
 
@@ -60,7 +67,13 @@ export default function SchoolManagementSystem() {
           setCurrentUser(normaliseUser(user));
         } catch (err) {
           console.error('Session validation failed:', err);
-          authService.logout();
+          // Fall back to stored user data if the API is unreachable
+          const storedUser = authService.getStoredUser();
+          if (storedUser) {
+            setCurrentUser(normaliseUser(storedUser));
+          } else {
+            authService.logout();
+          }
         }
       }
       setAuthLoading(false);
@@ -98,6 +111,8 @@ export default function SchoolManagementSystem() {
   const getModulesForRole = (role) => {
     const allModules = {
       dashboard: { name: 'Dashboard', icon: Home, access: ['super_admin', 'principal', 'teacher', 'parent', 'student', 'finance_officer', 'sgb_member'] },
+      // Teacher-specific modules
+      myClasses: { name: 'My Classes', icon: BookOpen, access: ['teacher'] },
       // LMS Modules
       lessons: { name: 'Lessons', icon: BookOpen, access: ['teacher', 'student', 'parent', 'principal'] },
       assignments: { name: 'Assignments', icon: ClipboardList, access: ['teacher', 'student', 'parent', 'principal'] },
@@ -117,7 +132,8 @@ export default function SchoolManagementSystem() {
       reports: { name: 'Reports', icon: FileSpreadsheet, access: ['super_admin', 'principal', 'finance_officer', 'sgb_member'] },
       sgb: { name: 'SGB Portal', icon: Building, access: ['super_admin', 'principal', 'sgb_member'] },
       transport: { name: 'Transport', icon: Bus, access: ['super_admin', 'principal', 'admin_staff', 'parent', 'student'] },
-      settings: { name: 'Settings', icon: Settings, access: ['super_admin', 'principal', 'admin_staff'] }
+      settings: { name: 'Settings', icon: Settings, access: ['super_admin', 'principal', 'admin_staff'] },
+      teacherProfile: { name: 'My Profile', icon: GraduationCap, access: ['teacher'] },
     };
 
     return Object.entries(allModules)
@@ -1223,18 +1239,27 @@ export default function SchoolManagementSystem() {
         </div>
 
         <div className="content-area">
-          {activeModule === 'dashboard' && <DashboardView role={currentUser.role} user={currentUser} institution={currentUser.institution} />}
+          {activeModule === 'dashboard' && <DashboardView role={currentUser.role} user={currentUser} institution={currentUser.institution} onNavigate={setActiveModule} />}
           {activeModule === 'lessons' && <LessonsView role={currentUser.role} />}
-          {activeModule === 'assignments' && <AssignmentsView role={currentUser.role} />}
+          {activeModule === 'assignments' && (currentUser.role === 'teacher'
+            ? <TeacherAssignments user={currentUser} />
+            : <AssignmentsView role={currentUser.role} />)}
           {activeModule === 'exams' && <ExamsView role={currentUser.role} />}
           {activeModule === 'planning' && <LessonPlanningView />}
           {activeModule === 'progress' && <ProgressView role={currentUser.role} user={currentUser} />}
           {activeModule === 'discussions' && <DiscussionsView role={currentUser.role} />}
           {activeModule === 'students' && <StudentsView />}
           {activeModule === 'teachers' && <TeachersView />}
-          {activeModule === 'attendance' && <AttendanceView />}
-          {activeModule === 'timetable' && <TimetableView />}
-          {activeModule === 'grades' && <GradesView />}
+          {activeModule === 'myClasses' && <TeacherClasses user={currentUser} />}
+          {activeModule === 'attendance' && (currentUser.role === 'teacher'
+            ? <TeacherAttendance user={currentUser} />
+            : <AttendanceView />)}
+          {activeModule === 'timetable' && (currentUser.role === 'teacher'
+            ? <TeacherTimetable user={currentUser} onNavigate={setActiveModule} />
+            : <TimetableView />)}
+          {activeModule === 'grades' && (currentUser.role === 'teacher'
+            ? <TeacherGrades user={currentUser} />
+            : <GradesView />)}
           {activeModule === 'fees' && <FeesView />}
           {activeModule === 'communications' && <CommunicationsView />}
           {activeModule === 'library' && <LibraryView />}
@@ -1242,6 +1267,7 @@ export default function SchoolManagementSystem() {
           {activeModule === 'sgb' && <SGBView />}
           {activeModule === 'transport' && <TransportView />}
           {activeModule === 'settings' && <SettingsView currentUser={currentUser} setCurrentUser={setCurrentUser} />}
+          {activeModule === 'teacherProfile' && <TeacherProfile user={currentUser} onUserUpdate={setCurrentUser} />}
         </div>
       </div>
 
@@ -1460,13 +1486,13 @@ function LoginScreen({ onLogin }) {
 }
 
 // Dashboard View Component (Enhanced for different roles)
-function DashboardView({ role, user, institution }) {
+function DashboardView({ role, user, institution, onNavigate }) {
   if (role === 'student') {
     return <StudentDashboard user={user} />;
   } else if (role === 'parent') {
     return <ParentDashboard user={user} />;
   } else if (role === 'teacher') {
-    return <TeacherDashboard user={user} institution={institution} />;
+    return <TeacherDashboard user={user} institution={institution} onNavigate={onNavigate} />;
   } else {
     return <AdminDashboard institution={institution} />;
   }
@@ -1775,154 +1801,7 @@ function ParentDashboard({ user }) {
   );
 }
 
-// Teacher Dashboard
-function TeacherDashboard({ user, institution }) {
-  return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-title">Welcome back, {user.name.split(' ')[1]}! 👨‍🏫</h1>
-        <p className="page-subtitle">Manage your classes and track student progress</p>
-      </div>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon blue">
-              <Users size={24} />
-            </div>
-          </div>
-          <div className="stat-label">Total Students</div>
-          <div className="stat-value">145</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon green">
-              <BookOpen size={24} />
-            </div>
-          </div>
-          <div className="stat-label">Active Lessons</div>
-          <div className="stat-value">12</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon orange">
-              <ClipboardList size={24} />
-            </div>
-          </div>
-          <div className="stat-label">Pending Grading</div>
-          <div className="stat-value">28</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon purple">
-              <Target size={24} />
-            </div>
-          </div>
-          <div className="stat-label">Class Average</div>
-          <div className="stat-value">84%</div>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3 className="chart-title">Recent Lessons</h3>
-            <button className="action-button primary">
-              <Plus size={14} />
-              Create Lesson
-            </button>
-          </div>
-          <div style={{ padding: '0 24px 24px' }}>
-            {mockLessons.slice(0, 3).map(lesson => (
-              <div key={lesson.id} style={{
-                padding: '16px',
-                background: 'rgba(102, 126, 234, 0.02)',
-                borderRadius: '12px',
-                marginBottom: '12px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 600 }}>{lesson.title}</div>
-                  <span className={`badge ${lesson.status === 'published' ? 'success' : 'warning'}`}>
-                    {lesson.status}
-                  </span>
-                </div>
-                <div style={{ fontSize: '13px', color: '#718096' }}>
-                  {lesson.subject} • {lesson.grade} • {lesson.views} views
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3 className="chart-title">Quick Actions</h3>
-          </div>
-          <div style={{ padding: '0 24px 24px', display: 'grid', gap: '12px' }}>
-            <button className="action-button primary" style={{ width: '100%', justifyContent: 'center' }}>
-              <Plus size={14} />
-              Create Assignment
-            </button>
-            <button className="action-button" style={{ width: '100%', justifyContent: 'center' }}>
-              <FileText size={14} />
-              Create Mock Exam
-            </button>
-            <button className="action-button" style={{ width: '100%', justifyContent: 'center' }}>
-              <Calendar size={14} />
-              Plan Lesson
-            </button>
-            <button className="action-button" style={{ width: '100%', justifyContent: 'center' }}>
-              <Award size={14} />
-              Grade Submissions
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="data-table">
-        <div className="table-header">
-          <h3 className="table-title">Assignment Submissions</h3>
-          <button className="action-button">View All</button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Assignment</th>
-              <th>Subject</th>
-              <th>Due Date</th>
-              <th>Submissions</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockAssignments.map(assignment => (
-              <tr key={assignment.id}>
-                <td style={{ fontWeight: 600 }}>{assignment.title}</td>
-                <td>{assignment.subject}</td>
-                <td>{assignment.dueDate}</td>
-                <td>
-                  <span style={{ fontWeight: 600 }}>{assignment.submissions}</span>/{assignment.totalStudents}
-                  <div style={{ fontSize: '12px', color: '#718096' }}>
-                    {Math.round((assignment.submissions / assignment.totalStudents) * 100)}% submitted
-                  </div>
-                </td>
-                <td>
-                  <div className="table-actions">
-                    <button className="table-action-btn view"><Eye size={16} /></button>
-                    <button className="table-action-btn edit"><Edit size={16} /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
 // Admin Dashboard – fetches real stats from /api/dashboard/summary
 function AdminDashboard({ institution }) {
