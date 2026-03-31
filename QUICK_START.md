@@ -48,14 +48,14 @@ You now have a **COMPLETE, PRODUCTION-READY** full-stack school management syste
 cd fullstack-app
 
 # Create environment file
-cp backend/.env.example backend/.env
+cp .env.example .env
 
 # Start everything with Docker
 docker-compose up -d
 
 # Wait 30 seconds for services to start, then:
 # Run database migrations and seed
-docker-compose exec backend npx prisma migrate deploy
+docker-compose exec backend npx prisma migrate deploy --schema=../prisma/schema.prisma
 docker-compose exec backend npm run prisma:seed
 ```
 
@@ -110,6 +110,10 @@ After seeding the database, use these credentials:
 
 ```
 fullstack-app/
+├── prisma/
+│   ├── schema.prisma    # Database schema (single source of truth)
+│   └── seed.js          # Demo data
+├── .env.example         # Environment template (copy to .env at repo root)
 ├── backend/
 │   ├── src/
 │   │   ├── routes/          # API endpoints
@@ -120,10 +124,6 @@ fullstack-app/
 │   │   ├── middleware/
 │   │   │   └── auth.middleware.js
 │   │   └── server.js
-│   ├── prisma/
-│   │   ├── schema.prisma    # Database schema
-│   │   └── seed.js          # Demo data
-│   ├── .env.example
 │   └── package.json
 ├── frontend/
 │   ├── src/
@@ -138,7 +138,7 @@ fullstack-app/
 
 ### Backend Environment Variables
 
-Edit `backend/.env`:
+Edit `.env` at the **repo root**:
 
 ```env
 # Database
@@ -336,7 +336,7 @@ sudo systemctl restart postgresql
 # Kill process on port 5000
 lsof -ti:5000 | xargs kill -9
 
-# Or change PORT in backend/.env
+# Or change PORT in the root .env
 PORT=5001
 ```
 

@@ -72,17 +72,17 @@ A production-ready, full-stack school management system with integrated Learning
 
 ```
 fullstack-app/
+├── prisma/
+│   ├── schema.prisma         # Database schema (single source of truth)
+│   └── seed.js               # Database seeder
+├── .env.example              # Environment template (copy to .env at repo root)
 ├── backend/
 │   ├── src/
 │   │   ├── routes/           # API routes
 │   │   ├── middleware/       # Custom middleware
 │   │   ├── utils/            # Utility functions
 │   │   └── server.js         # Express server
-│   ├── prisma/
-│   │   ├── schema.prisma     # Database schema
-│   │   └── seed.js           # Database seeder
 │   ├── uploads/              # File uploads directory
-│   ├── .env.example          # Environment template
 │   └── package.json
 ├── frontend/
 │   ├── src/
@@ -184,7 +184,7 @@ docker run --name edumanage-postgres \
 
 ### Backend (.env)
 
-Create `.env` file in `backend/` directory:
+Create `.env` file at the **repo root** (not inside `backend/`):
 
 ```env
 # Database

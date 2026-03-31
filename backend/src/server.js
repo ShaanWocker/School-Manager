@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const fileUpload = require('express-fileupload');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
 const app = express();
 

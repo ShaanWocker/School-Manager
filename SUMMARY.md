@@ -89,9 +89,9 @@
 
 ```bash
 cd fullstack-app
-cp backend/.env.example backend/.env
+cp .env.example .env
 docker-compose up -d
-docker-compose exec backend npx prisma migrate deploy
+docker-compose exec backend npx prisma migrate deploy --schema=../prisma/schema.prisma
 docker-compose exec backend npm run prisma:seed
 ```
 
@@ -132,7 +132,9 @@ Visit: http://localhost:3000
 ```
 fullstack-app/
 ├── prisma/
-│   └── schema.prisma              ← DATABASE SCHEMA (30+ tables)
+│   ├── schema.prisma              ← DATABASE SCHEMA (30+ tables, single source of truth)
+│   └── seed.js                    ← Demo data generator
+├── .env.example                   ← Environment template (copy to .env at repo root)
 ├── backend/
 │   ├── src/
 │   │   ├── server.js              ← Express server
@@ -141,9 +143,6 @@ fullstack-app/
 │   │   └── routes/
 │   │       ├── auth.routes.js     ← ✅ COMPLETE
 │   │       └── student.routes.js  ← ✅ COMPLETE (use as template!)
-│   ├── prisma/
-│   │   └── seed.js                ← Demo data generator
-│   ├── .env.example               ← Environment template
 │   └── package.json
 ├── frontend/
 │   └── (Add your React app here or use the .jsx file)
