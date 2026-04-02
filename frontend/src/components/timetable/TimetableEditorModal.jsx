@@ -15,8 +15,9 @@ import { DAYS_LABEL, getDefaultTime } from './timetableConstants';
  * @param {number} props.periodNumber - Period number (1-8)
  * @param {Array} props.subjects - Available subjects [{ id, name, code }]
  * @param {Array} props.teachers - Available teachers [{ id, user: { firstName, lastName } }]
+ * @param {Array} props.classes - Available classes [{ id, name, section }]
  * @param {Array} props.allSlots - All slots for conflict detection
- * @param {string} props.classId - Current class ID (for conflict detection)
+ * @param {string} props.classId - Pre-selected class ID (optional, used as default)
  * @param {Function} [props.onCheckConflicts] - API-based conflict checker: ({teacherId, classId, dayOfWeek, periodNumber, room, excludeSlotId}) => Promise
  */
 export default function TimetableEditorModal({
@@ -29,12 +30,14 @@ export default function TimetableEditorModal({
   periodNumber,
   subjects = [],
   teachers = [],
+  classes = [],
   allSlots = [],
-  classId,
+  classId: defaultClassId,
   onCheckConflicts,
 }) {
   const [subjectId, setSubjectId] = useState('');
   const [teacherId, setTeacherId] = useState('');
+  const [classId, setClassId] = useState('');
   const [room, setRoom] = useState('');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState([]);
@@ -45,16 +48,18 @@ export default function TimetableEditorModal({
       if (slot) {
         setSubjectId(slot.subjectId || '');
         setTeacherId(slot.teacherId || '');
+        setClassId(slot.classId || defaultClassId || '');
         setRoom(slot.room || '');
       } else {
         setSubjectId('');
         setTeacherId('');
+        setClassId(defaultClassId || '');
         setRoom('');
       }
       setErrors([]);
       setWarnings([]);
     }
-  }, [open, slot]);
+  }, [open, slot, defaultClassId]);
 
   // Real-time conflict detection when teacher, room, or class changes
   const checkConflictsRealTime = useCallback(async (currentTeacherId, currentRoom) => {
@@ -130,12 +135,12 @@ export default function TimetableEditorModal({
     setWarnings(clientWarnings);
   }, [allSlots, classId, dayOfWeek, periodNumber, slot, teachers, onCheckConflicts]);
 
-  // Trigger real-time check on teacher/room changes
+  // Trigger real-time check on teacher/room/class changes
   useEffect(() => {
     if (open && teacherId) {
       checkConflictsRealTime(teacherId, room);
     }
-  }, [open, teacherId, room, checkConflictsRealTime]);
+  }, [open, teacherId, room, classId, checkConflictsRealTime]);
 
   if (!open) return null;
 
@@ -143,6 +148,7 @@ export default function TimetableEditorModal({
     const newErrors = [];
     if (!subjectId) newErrors.push('Please select a subject.');
     if (!teacherId) newErrors.push('Please select a teacher.');
+    if (!classId) newErrors.push('Please select a class.');
 
     // Include any active warnings as errors to prevent saving
     if (warnings.length > 0) {
@@ -167,6 +173,7 @@ export default function TimetableEditorModal({
         periodNumber,
         subjectId,
         teacherId,
+        classId,
         room: room || null,
         startTime: slot?.startTime || getDefaultTime(periodNumber, 'start'),
         endTime: slot?.endTime || getDefaultTime(periodNumber, 'end'),
@@ -299,6 +306,23 @@ export default function TimetableEditorModal({
               <option value="">Select a subject</option>
               {subjects.map(s => (
                 <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Class */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Class *</label>
+            <select
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="">Select a class</option>
+              {classes.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.section ? `(${c.section})` : ''}
+                </option>
               ))}
             </select>
           </div>
