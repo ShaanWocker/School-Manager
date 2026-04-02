@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, Printer, ChevronDown } from 'lucide-react';
+import { Plus, RefreshCw, Printer, ChevronDown, Users } from 'lucide-react';
 import TimetableGrid from './TimetableGrid';
 import TimetableEditorModal from './TimetableEditorModal';
+import CreateTimetableModal from './CreateTimetableModal';
 import timetableService from '../../services/timetableService';
 import classService from '../../services/classService';
 import subjectService from '../../services/subjectService';
 import teacherService from '../../services/teacherService';
+import { DAY_MAP, DAYS } from './timetableConstants';
 
 /**
  * TimetablePage - Admin timetable management page
  * Allows selecting a class, viewing/editing the full weekly timetable,
- * adding/removing slots with validation.
+ * adding/removing slots with validation. Includes teacher schedule view.
  */
 export default function TimetablePage() {
   // Data
@@ -29,6 +31,9 @@ export default function TimetablePage() {
   const [modalDay, setModalDay] = useState(1);
   const [modalPeriod, setModalPeriod] = useState(1);
   const [modalSlot, setModalSlot] = useState(null);
+  const [viewMode, setViewMode] = useState('class'); // 'class' or 'teacher'
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -84,15 +89,18 @@ export default function TimetablePage() {
     loadSlots();
   }, [loadSlots]);
 
-  // Filtered slots for the selected class
-  const filteredSlots = selectedClassId
-    ? slots.filter(s => s.classId === selectedClassId)
-    : slots;
+  // Filtered slots based on view mode
+  const filteredSlots = viewMode === 'teacher' && selectedTeacherId
+    ? slots.filter(s => s.teacherId === selectedTeacherId)
+    : selectedClassId
+      ? slots.filter(s => s.classId === selectedClassId)
+      : slots;
 
   // All slots (for conflict detection across all classes)
   const allSlots = slots;
 
   const handleCellClick = (dayOfWeek, periodNumber, slot) => {
+    if (viewMode === 'teacher') return; // Read-only in teacher view
     setModalDay(dayOfWeek);
     setModalPeriod(periodNumber);
     setModalSlot(slot);
@@ -123,9 +131,46 @@ export default function TimetablePage() {
     await loadSlots();
   };
 
+  const handleCheckConflicts = useCallback(async (params) => {
+    if (!selectedTimetableId) return { conflicts: [], hasConflicts: false };
+    return timetableService.checkConflicts(selectedTimetableId, params);
+  }, [selectedTimetableId]);
+
   const handlePrint = () => {
     window.print();
   };
+
+  const handleCreateTimetable = async (timetableData) => {
+    const res = await timetableService.create(timetableData);
+    const created = res.data || res;
+    // Add the new timetable to the list and select it
+    setTimetables(prev => [created, ...prev]);
+    if (created?.id) {
+      setSelectedTimetableId(created.id);
+    }
+  };
+
+  // Teacher workload summary for teacher view
+  const getTeacherWorkload = () => {
+    if (!selectedTeacherId || viewMode !== 'teacher') return null;
+    const teacherSlots = slots.filter(s => s.teacherId === selectedTeacherId);
+    const uniqueClasses = new Set(teacherSlots.map(s => s.classId));
+    const uniqueSubjects = new Set(teacherSlots.map(s => s.subjectId));
+    const dailyLoad = {};
+    teacherSlots.forEach(s => {
+      const day = DAY_MAP[s.dayOfWeek] || `Day ${s.dayOfWeek}`;
+      dailyLoad[day] = (dailyLoad[day] || 0) + 1;
+    });
+    return {
+      totalPeriods: teacherSlots.length,
+      freePeriods: 40 - teacherSlots.length,
+      classCount: uniqueClasses.size,
+      subjectCount: uniqueSubjects.size,
+      dailyLoad,
+    };
+  };
+
+  const teacherWorkload = getTeacherWorkload();
 
   if (loading) {
     return (
@@ -143,24 +188,44 @@ export default function TimetablePage() {
           <h1 className="page-title">Timetable Management</h1>
           <p className="page-subtitle">Create and manage class timetables</p>
         </div>
-        <button
-          onClick={handlePrint}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 16px',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            background: 'white',
-            color: '#64748b',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          <Printer size={14} /> Print
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              border: 'none',
+              borderRadius: '8px',
+              background: '#667eea',
+              color: 'white',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Plus size={14} /> New Timetable
+          </button>
+          <button
+            onClick={handlePrint}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              background: 'white',
+              color: '#64748b',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Printer size={14} /> Print
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -176,6 +241,53 @@ export default function TimetablePage() {
           {error}
         </div>
       )}
+
+      {/* View Mode Toggle */}
+      <div style={{
+        display: 'flex',
+        gap: '4px',
+        marginBottom: '16px',
+        background: '#f1f5f9',
+        borderRadius: '10px',
+        padding: '4px',
+        width: 'fit-content',
+      }}>
+        <button
+          onClick={() => { setViewMode('class'); setSelectedTeacherId(''); }}
+          style={{
+            padding: '8px 20px',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            background: viewMode === 'class' ? 'white' : 'transparent',
+            color: viewMode === 'class' ? '#667eea' : '#64748b',
+            boxShadow: viewMode === 'class' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+          }}
+        >
+          Class View
+        </button>
+        <button
+          onClick={() => { setViewMode('teacher'); setSelectedClassId(''); }}
+          style={{
+            padding: '8px 20px',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            background: viewMode === 'teacher' ? 'white' : 'transparent',
+            color: viewMode === 'teacher' ? '#667eea' : '#64748b',
+            boxShadow: viewMode === 'teacher' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <Users size={14} /> Teacher Schedule
+        </button>
+      </div>
 
       {/* Selectors */}
       <div style={{
@@ -208,24 +320,47 @@ export default function TimetablePage() {
           </div>
         </div>
 
-        <div style={{ flex: '1 1 200px' }}>
-          <label style={labelStyle}>Class</label>
-          <div style={{ position: 'relative' }}>
-            <select
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">All classes</option>
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name} {c.section ? `(${c.section})` : ''}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+        {viewMode === 'class' && (
+          <div style={{ flex: '1 1 200px' }}>
+            <label style={labelStyle}>Class</label>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                style={selectStyle}
+              >
+                <option value="">All classes</option>
+                {classes.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.section ? `(${c.section})` : ''}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+            </div>
           </div>
-        </div>
+        )}
+
+        {viewMode === 'teacher' && (
+          <div style={{ flex: '1 1 200px' }}>
+            <label style={labelStyle}>Teacher</label>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={selectedTeacherId}
+                onChange={(e) => setSelectedTeacherId(e.target.value)}
+                style={selectStyle}
+              >
+                <option value="">Select a teacher</option>
+                {teachers.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.user ? `${t.user.firstName} ${t.user.lastName}` : t.name || t.id}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+            </div>
+          </div>
+        )}
 
         <button
           onClick={loadSlots}
@@ -254,24 +389,82 @@ export default function TimetablePage() {
         marginBottom: '16px',
         flexWrap: 'wrap',
       }}>
-        {[
-          { label: 'Total Slots', value: filteredSlots.length, color: '#667eea' },
-          { label: 'Free Periods', value: Math.max(0, 40 - filteredSlots.length), color: '#10b981' },
-          { label: 'Teachers', value: new Set(filteredSlots.map(s => s.teacherId)).size, color: '#f59e0b' },
-          { label: 'Subjects', value: new Set(filteredSlots.map(s => s.subjectId)).size, color: '#8b5cf6' },
-        ].map(stat => (
-          <div key={stat.label} style={{
-            flex: '1 1 120px',
-            background: 'white',
-            borderRadius: '12px',
-            padding: '14px 16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>{stat.label}</div>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: stat.color }}>{stat.value}</div>
-          </div>
-        ))}
+        {viewMode === 'class' ? (
+          [
+            { label: 'Total Slots', value: filteredSlots.length, color: '#667eea' },
+            { label: 'Free Periods', value: Math.max(0, 40 - filteredSlots.length), color: '#10b981' },
+            { label: 'Teachers', value: new Set(filteredSlots.map(s => s.teacherId)).size, color: '#f59e0b' },
+            { label: 'Subjects', value: new Set(filteredSlots.map(s => s.subjectId)).size, color: '#8b5cf6' },
+          ].map(stat => (
+            <div key={stat.label} style={{
+              flex: '1 1 120px',
+              background: 'white',
+              borderRadius: '12px',
+              padding: '14px 16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>{stat.label}</div>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: stat.color }}>{stat.value}</div>
+            </div>
+          ))
+        ) : teacherWorkload ? (
+          [
+            { label: 'Total Periods', value: teacherWorkload.totalPeriods, color: '#667eea' },
+            { label: 'Free Periods', value: teacherWorkload.freePeriods, color: '#10b981' },
+            { label: 'Classes', value: teacherWorkload.classCount, color: '#f59e0b' },
+            { label: 'Subjects', value: teacherWorkload.subjectCount, color: '#8b5cf6' },
+          ].map(stat => (
+            <div key={stat.label} style={{
+              flex: '1 1 120px',
+              background: 'white',
+              borderRadius: '12px',
+              padding: '14px 16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>{stat.label}</div>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: stat.color }}>{stat.value}</div>
+            </div>
+          ))
+        ) : null}
       </div>
+
+      {/* Teacher daily workload breakdown */}
+      {viewMode === 'teacher' && teacherWorkload && (
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          marginBottom: '16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '12px', margin: '0 0 12px 0' }}>
+            Daily Workload
+          </h3>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {DAYS.map((day) => {
+              const count = teacherWorkload.dailyLoad[day] || 0;
+              return (
+                <div key={day} style={{
+                  flex: '1 1 80px',
+                  textAlign: 'center',
+                  padding: '10px 8px',
+                  borderRadius: '10px',
+                  background: count > 6 ? '#fef2f2' : count > 0 ? '#f0f4ff' : '#f8fafc',
+                  border: `1px solid ${count > 6 ? '#fee2e2' : count > 0 ? '#e0e7ff' : '#f1f5f9'}`,
+                }}>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase' }}>{day.slice(0, 3)}</div>
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 700,
+                    color: count > 6 ? '#ef4444' : count > 0 ? '#667eea' : '#cbd5e1',
+                  }}>{count}</div>
+                  <div style={{ fontSize: '10px', color: '#94a3b8' }}>periods</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Timetable Grid */}
       <div style={{
@@ -285,16 +478,21 @@ export default function TimetablePage() {
             <Plus size={32} style={{ marginBottom: '12px' }} />
             <p style={{ fontSize: '15px' }}>Select a timetable to get started</p>
           </div>
+        ) : viewMode === 'teacher' && !selectedTeacherId ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+            <Users size={32} style={{ marginBottom: '12px' }} />
+            <p style={{ fontSize: '15px' }}>Select a teacher to view their schedule</p>
+          </div>
         ) : (
           <TimetableGrid
             slots={filteredSlots}
-            editable={!!selectedClassId}
-            onCellClick={selectedClassId ? handleCellClick : undefined}
+            editable={viewMode === 'class' && !!selectedClassId}
+            onCellClick={viewMode === 'class' && selectedClassId ? handleCellClick : undefined}
           />
         )}
       </div>
 
-      {!selectedClassId && selectedTimetableId && (
+      {viewMode === 'class' && !selectedClassId && selectedTimetableId && (
         <p style={{ textAlign: 'center', marginTop: '12px', fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>
           Select a class to enable editing
         </p>
@@ -306,6 +504,7 @@ export default function TimetablePage() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         onDelete={handleDelete}
+        onCheckConflicts={handleCheckConflicts}
         slot={modalSlot}
         dayOfWeek={modalDay}
         periodNumber={modalPeriod}
@@ -313,6 +512,13 @@ export default function TimetablePage() {
         teachers={teachers}
         allSlots={allSlots}
         classId={selectedClassId}
+      />
+
+      {/* Create Timetable Modal */}
+      <CreateTimetableModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreate={handleCreateTimetable}
       />
     </div>
   );

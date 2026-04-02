@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Save, Trash2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { DAYS_LABEL, getDefaultTime } from './timetableConstants';
 
 /**
@@ -17,6 +17,7 @@ import { DAYS_LABEL, getDefaultTime } from './timetableConstants';
  * @param {Array} props.teachers - Available teachers [{ id, user: { firstName, lastName } }]
  * @param {Array} props.allSlots - All slots for conflict detection
  * @param {string} props.classId - Current class ID (for conflict detection)
+ * @param {Function} [props.onCheckConflicts] - API-based conflict checker: ({teacherId, classId, dayOfWeek, periodNumber, room, excludeSlotId}) => Promise
  */
 export default function TimetableEditorModal({
   open,
@@ -30,12 +31,14 @@ export default function TimetableEditorModal({
   teachers = [],
   allSlots = [],
   classId,
+  onCheckConflicts,
 }) {
   const [subjectId, setSubjectId] = useState('');
   const [teacherId, setTeacherId] = useState('');
   const [room, setRoom] = useState('');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState([]);
+  const [warnings, setWarnings] = useState([]);
 
   useEffect(() => {
     if (open) {
@@ -49,33 +52,35 @@ export default function TimetableEditorModal({
         setRoom('');
       }
       setErrors([]);
+      setWarnings([]);
     }
   }, [open, slot]);
 
-  if (!open) return null;
+  // Real-time conflict detection when teacher, room, or class changes
+  const checkConflictsRealTime = useCallback(async (currentTeacherId, currentRoom) => {
+    if (!currentTeacherId || !classId) {
+      setWarnings([]);
+      return;
+    }
 
-  const validate = () => {
-    const newErrors = [];
-    if (!subjectId) newErrors.push('Please select a subject.');
-    if (!teacherId) newErrors.push('Please select a teacher.');
+    // Client-side check (fast, immediate feedback)
+    const clientWarnings = [];
 
-    // Check teacher double-booking
     const teacherConflict = allSlots.find(
       s =>
-        s.teacherId === teacherId &&
+        s.teacherId === currentTeacherId &&
         s.dayOfWeek === dayOfWeek &&
         s.periodNumber === periodNumber &&
         (!slot || s.id !== slot.id)
     );
     if (teacherConflict) {
-      const teacherObj = teachers.find(t => t.id === teacherId);
+      const teacherObj = teachers.find(t => t.id === currentTeacherId);
       const teacherLabel = teacherObj?.user
         ? `${teacherObj.user.firstName} ${teacherObj.user.lastName}`
         : 'This teacher';
-      newErrors.push(`${teacherLabel} is already assigned at ${DAYS_LABEL[dayOfWeek]} Period ${periodNumber}.`);
+      clientWarnings.push(`${teacherLabel} is already assigned at ${DAYS_LABEL[dayOfWeek]} Period ${periodNumber}.`);
     }
 
-    // Check class double-booking
     const classConflict = allSlots.find(
       s =>
         s.classId === classId &&
@@ -84,22 +89,64 @@ export default function TimetableEditorModal({
         (!slot || s.id !== slot.id)
     );
     if (classConflict) {
-      newErrors.push(`This class already has a slot at ${DAYS_LABEL[dayOfWeek]} Period ${periodNumber}.`);
+      clientWarnings.push(`This class already has a slot at ${DAYS_LABEL[dayOfWeek]} Period ${periodNumber}.`);
     }
 
-    // Check room conflict (if room specified)
-    if (room) {
+    if (currentRoom) {
       const roomConflict = allSlots.find(
         s =>
           s.room &&
-          s.room.toLowerCase() === room.toLowerCase() &&
+          s.room.toLowerCase() === currentRoom.toLowerCase() &&
           s.dayOfWeek === dayOfWeek &&
           s.periodNumber === periodNumber &&
           (!slot || s.id !== slot.id)
       );
       if (roomConflict) {
-        newErrors.push(`Room "${room}" is already occupied at ${DAYS_LABEL[dayOfWeek]} Period ${periodNumber}.`);
+        clientWarnings.push(`Room "${currentRoom}" is already occupied at ${DAYS_LABEL[dayOfWeek]} Period ${periodNumber}.`);
       }
+    }
+
+    // If we have an API conflict checker, also validate server-side
+    if (onCheckConflicts && clientWarnings.length === 0) {
+      try {
+        const result = await onCheckConflicts({
+          teacherId: currentTeacherId,
+          classId,
+          dayOfWeek,
+          periodNumber,
+          room: currentRoom || null,
+          excludeSlotId: slot?.id || null,
+        });
+        if (result.hasConflicts) {
+          const serverWarnings = result.conflicts.map(c => c.message);
+          setWarnings(serverWarnings);
+          return;
+        }
+      } catch {
+        // If API check fails, rely on client-side check only
+      }
+    }
+
+    setWarnings(clientWarnings);
+  }, [allSlots, classId, dayOfWeek, periodNumber, slot, teachers, onCheckConflicts]);
+
+  // Trigger real-time check on teacher/room changes
+  useEffect(() => {
+    if (open && teacherId) {
+      checkConflictsRealTime(teacherId, room);
+    }
+  }, [open, teacherId, room, checkConflictsRealTime]);
+
+  if (!open) return null;
+
+  const validate = () => {
+    const newErrors = [];
+    if (!subjectId) newErrors.push('Please select a subject.');
+    if (!teacherId) newErrors.push('Please select a teacher.');
+
+    // Include any active warnings as errors to prevent saving
+    if (warnings.length > 0) {
+      newErrors.push(...warnings);
     }
 
     return newErrors;
@@ -125,8 +172,14 @@ export default function TimetableEditorModal({
         endTime: slot?.endTime || getDefaultTime(periodNumber, 'end'),
       });
       onClose();
-    } catch {
-      setErrors(['Failed to save. Please try again.']);
+    } catch (err) {
+      // Handle server-side conflict response (409)
+      const serverConflicts = err?.response?.data?.conflicts;
+      if (serverConflicts && Array.isArray(serverConflicts)) {
+        setErrors(serverConflicts.map(c => c.message));
+      } else {
+        setErrors([err?.response?.data?.message || 'Failed to save. Please try again.']);
+      }
     } finally {
       setSaving(false);
     }
@@ -200,6 +253,24 @@ export default function TimetableEditorModal({
 
         {/* Body */}
         <div style={{ padding: '20px 24px' }}>
+          {/* Real-time conflict warnings */}
+          {warnings.length > 0 && errors.length === 0 && (
+            <div style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: '#fffbeb',
+              border: '1px solid #fef3c7',
+              marginBottom: '16px',
+            }}>
+              {warnings.map((warn, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: i < warnings.length - 1 ? '6px' : 0 }}>
+                  <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                  <span style={{ fontSize: '13px', color: '#92400e' }}>{warn}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {errors.length > 0 && (
             <div style={{
               padding: '12px 14px',

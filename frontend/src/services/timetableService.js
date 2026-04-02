@@ -107,6 +107,28 @@ export const timetableService = {
     const data = response.data?.data || response.data;
     const slots = data?.slots || [];
     return slots.filter(s => s.teacherId === teacherId);
+  },
+
+  /**
+   * Check for scheduling conflicts before saving a slot (real-time validation)
+   * @param {string} timetableId - Timetable ID
+   * @param {Object} params - { teacherId, classId, dayOfWeek, periodNumber, room?, excludeSlotId? }
+   * @returns {Promise<{conflicts: Array, hasConflicts: boolean}>}
+   */
+  checkConflicts: async (timetableId, params) => {
+    const response = await api.post(`/timetables/${timetableId}/check-conflicts`, params);
+    return response.data;
+  },
+
+  /**
+   * Update a timetable (name, academic year, term, etc.)
+   * @param {string} id - Timetable ID
+   * @param {Object} data - Fields to update
+   * @returns {Promise} Updated timetable
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/timetables/${id}`, data);
+    return response.data;
   }
 };
 
