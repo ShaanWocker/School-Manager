@@ -6,6 +6,12 @@ const { protect, authorize } = require('../middleware/auth.middleware');
 
 const prisma = new PrismaClient();
 
+// Scheduling constants
+const MIN_DAY_OF_WEEK = 1;
+const MAX_DAY_OF_WEEK = 5;
+const MIN_PERIOD_NUMBER = 1;
+const MAX_PERIOD_NUMBER = 8;
+
 /**
  * Check scheduling conflicts for a timetable slot.
  * Returns an array of conflict descriptions (empty if no conflicts).
@@ -226,8 +232,8 @@ router.put('/:id', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF')
 
 // POST /api/timetables/:id/slots — Create a new slot with conflict checking
 router.post('/:id/slots', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF'), [
-  body('dayOfWeek').isInt({ min: 1, max: 5 }).withMessage('Day must be 1-5 (Monday-Friday)'),
-  body('periodNumber').isInt({ min: 1, max: 8 }).withMessage('Period number must be 1-8'),
+  body('dayOfWeek').isInt({ min: MIN_DAY_OF_WEEK, max: MAX_DAY_OF_WEEK }).withMessage(`Day must be ${MIN_DAY_OF_WEEK}-${MAX_DAY_OF_WEEK} (Monday-Friday)`),
+  body('periodNumber').isInt({ min: MIN_PERIOD_NUMBER, max: MAX_PERIOD_NUMBER }).withMessage(`Period number must be ${MIN_PERIOD_NUMBER}-${MAX_PERIOD_NUMBER}`),
   body('startTime').notEmpty().withMessage('Start time is required'),
   body('endTime').notEmpty().withMessage('End time is required'),
   body('subjectId').notEmpty().withMessage('Subject ID is required'),
@@ -289,8 +295,8 @@ router.post('/:id/slots', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_
 
 // PUT /api/timetables/:id/slots/:slotId — Update an existing slot with conflict checking
 router.put('/:id/slots/:slotId', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_STAFF'), [
-  body('dayOfWeek').optional().isInt({ min: 1, max: 5 }).withMessage('Day must be 1-5 (Monday-Friday)'),
-  body('periodNumber').optional().isInt({ min: 1, max: 8 }).withMessage('Period number must be 1-8'),
+  body('dayOfWeek').optional().isInt({ min: MIN_DAY_OF_WEEK, max: MAX_DAY_OF_WEEK }).withMessage(`Day must be ${MIN_DAY_OF_WEEK}-${MAX_DAY_OF_WEEK} (Monday-Friday)`),
+  body('periodNumber').optional().isInt({ min: MIN_PERIOD_NUMBER, max: MAX_PERIOD_NUMBER }).withMessage(`Period number must be ${MIN_PERIOD_NUMBER}-${MAX_PERIOD_NUMBER}`),
   body('subjectId').optional().notEmpty().withMessage('Subject ID cannot be empty'),
   body('classId').optional().notEmpty().withMessage('Class ID cannot be empty'),
   body('teacherId').optional().notEmpty().withMessage('Teacher ID cannot be empty'),
@@ -377,8 +383,8 @@ router.delete('/:id/slots/:slotId', protect, authorize('SUPER_ADMIN', 'PRINCIPAL
 router.post('/:id/check-conflicts', protect, [
   body('teacherId').notEmpty().withMessage('Teacher ID is required'),
   body('classId').notEmpty().withMessage('Class ID is required'),
-  body('dayOfWeek').isInt({ min: 1, max: 5 }).withMessage('Day must be 1-5'),
-  body('periodNumber').isInt({ min: 1, max: 8 }).withMessage('Period must be 1-8'),
+  body('dayOfWeek').isInt({ min: MIN_DAY_OF_WEEK, max: MAX_DAY_OF_WEEK }).withMessage(`Day must be ${MIN_DAY_OF_WEEK}-${MAX_DAY_OF_WEEK}`),
+  body('periodNumber').isInt({ min: MIN_PERIOD_NUMBER, max: MAX_PERIOD_NUMBER }).withMessage(`Period must be ${MIN_PERIOD_NUMBER}-${MAX_PERIOD_NUMBER}`),
 ], async (req, res, next) => {
   try {
     const errors = validationResult(req);
