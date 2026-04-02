@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, RefreshCw, Printer, ChevronDown, Users } from 'lucide-react';
 import TimetableGrid from './TimetableGrid';
 import TimetableEditorModal from './TimetableEditorModal';
+import CreateTimetableModal from './CreateTimetableModal';
 import timetableService from '../../services/timetableService';
 import classService from '../../services/classService';
 import subjectService from '../../services/subjectService';
@@ -32,6 +33,7 @@ export default function TimetablePage() {
   const [modalSlot, setModalSlot] = useState(null);
   const [viewMode, setViewMode] = useState('class'); // 'class' or 'teacher'
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -138,6 +140,16 @@ export default function TimetablePage() {
     window.print();
   };
 
+  const handleCreateTimetable = async (timetableData) => {
+    const res = await timetableService.create(timetableData);
+    const created = res.data || res;
+    // Add the new timetable to the list and select it
+    setTimetables(prev => [created, ...prev]);
+    if (created?.id) {
+      setSelectedTimetableId(created.id);
+    }
+  };
+
   // Teacher workload summary for teacher view
   const getTeacherWorkload = () => {
     if (!selectedTeacherId || viewMode !== 'teacher') return null;
@@ -177,6 +189,24 @@ export default function TimetablePage() {
           <p className="page-subtitle">Create and manage class timetables</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              border: 'none',
+              borderRadius: '8px',
+              background: '#667eea',
+              color: 'white',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Plus size={14} /> New Timetable
+          </button>
           <button
             onClick={handlePrint}
             style={{
@@ -482,6 +512,13 @@ export default function TimetablePage() {
         teachers={teachers}
         allSlots={allSlots}
         classId={selectedClassId}
+      />
+
+      {/* Create Timetable Modal */}
+      <CreateTimetableModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreate={handleCreateTimetable}
       />
     </div>
   );
