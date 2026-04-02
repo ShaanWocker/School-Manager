@@ -109,12 +109,11 @@ export default function TimetablePage() {
 
   const handleSave = async (slotData) => {
     if (!selectedTimetableId) return;
-    if (!selectedClassId) {
-      throw new Error('Please select a class first.');
+    if (!slotData.classId) {
+      throw new Error('Please select a class.');
     }
     const payload = {
       ...slotData,
-      classId: selectedClassId,
     };
 
     if (slotData.id) {
@@ -486,15 +485,15 @@ export default function TimetablePage() {
         ) : (
           <TimetableGrid
             slots={filteredSlots}
-            editable={viewMode === 'class' && !!selectedClassId}
-            onCellClick={viewMode === 'class' && selectedClassId ? handleCellClick : undefined}
+            editable={viewMode === 'class'}
+            onCellClick={viewMode === 'class' ? handleCellClick : undefined}
           />
         )}
       </div>
 
       {viewMode === 'class' && !selectedClassId && selectedTimetableId && (
         <p style={{ textAlign: 'center', marginTop: '12px', fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>
-          Select a class to enable editing
+          Showing all classes. Select a class above to filter, or click any cell to add/edit a slot.
         </p>
       )}
 
@@ -510,6 +509,7 @@ export default function TimetablePage() {
         periodNumber={modalPeriod}
         subjects={subjects}
         teachers={teachers}
+        classes={classes}
         allSlots={allSlots}
         classId={selectedClassId}
       />

@@ -52,6 +52,7 @@ export default function TimetableCell({ slot, editable = false, onClick }) {
   const teacherName = slot.teacher?.user
     ? `${slot.teacher.user.firstName} ${slot.teacher.user.lastName}`
     : slot.teacherName || '';
+  const className = slot.class?.name || slot.className || '';
   const room = slot.room || '';
   const color = getSubjectColor(subjectName);
 
@@ -82,11 +83,16 @@ export default function TimetableCell({ slot, editable = false, onClick }) {
           e.currentTarget.style.boxShadow = 'none';
         }
       }}
-      title={`${subjectName}${teacherName ? ` — ${teacherName}` : ''}${room ? ` (${room})` : ''}`}
+      title={`${subjectName}${className ? ` — ${className}` : ''}${teacherName ? ` — ${teacherName}` : ''}${room ? ` (${room})` : ''}`}
     >
       <span style={{ fontWeight: 600, fontSize: '13px', color: color, lineHeight: 1.2 }}>
         {subjectName}
       </span>
+      {className && (
+        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 500, lineHeight: 1.2 }}>
+          {className}
+        </span>
+      )}
       {teacherName && (
         <span style={{ fontSize: '11px', color: '#64748b', lineHeight: 1.2 }}>
           {teacherName}
