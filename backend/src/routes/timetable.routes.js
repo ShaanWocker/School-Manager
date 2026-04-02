@@ -287,8 +287,8 @@ router.post('/:id/slots', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_
         teacherId,
         room: room || null,
         recurrenceType: recurrenceType || 'weekly',
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
+        startDate: recurrenceType && recurrenceType !== 'none' && startDate ? new Date(startDate) : null,
+        endDate: recurrenceType && recurrenceType !== 'none' && endDate ? new Date(endDate) : null,
       },
       include: slotInclude,
     });
@@ -358,9 +358,22 @@ router.put('/:id/slots/:slotId', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 
     if (classId !== undefined) data.classId = classId;
     if (teacherId !== undefined) data.teacherId = teacherId;
     if (room !== undefined) data.room = room || null;
-    if (recurrenceType !== undefined) data.recurrenceType = recurrenceType;
-    if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null;
-    if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null;
+    if (recurrenceType !== undefined) {
+      data.recurrenceType = recurrenceType;
+      // Clear dates when recurrence is 'none'
+      if (recurrenceType === 'none') {
+        data.startDate = null;
+        data.endDate = null;
+      }
+    }
+    if (startDate !== undefined) {
+      const effectiveRecurrence = recurrenceType !== undefined ? recurrenceType : existing.recurrenceType;
+      data.startDate = effectiveRecurrence !== 'none' && startDate ? new Date(startDate) : null;
+    }
+    if (endDate !== undefined) {
+      const effectiveRecurrence = recurrenceType !== undefined ? recurrenceType : existing.recurrenceType;
+      data.endDate = effectiveRecurrence !== 'none' && endDate ? new Date(endDate) : null;
+    }
 
     const slot = await prisma.timetableSlot.update({
       where: { id: req.params.slotId },
