@@ -5,12 +5,14 @@ import SettingsView from './components/SettingsView';
 import StudentsView from './components/StudentsView';
 import AttendanceView from './components/AttendanceView';
 import TeacherDashboard from './components/teacher/TeacherDashboard';
-import TeacherTimetable from './components/teacher/TeacherTimetable';
 import TeacherClasses from './components/teacher/TeacherClasses';
 import TeacherAttendance from './components/teacher/TeacherAttendance';
 import TeacherAssignments from './components/teacher/TeacherAssignments';
 import TeacherGrades from './components/teacher/TeacherGrades';
 import TeacherProfile from './components/teacher/TeacherProfile';
+import TimetablePage from './components/timetable/TimetablePage';
+import ClassTimetablePage from './components/timetable/ClassTimetablePage';
+import TeacherTimetablePage from './components/timetable/TeacherTimetablePage';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Users, BookOpen, Calendar, DollarSign, FileText, Settings, Bell, Menu, X, ChevronDown, Search, Plus, Upload, Edit, Trash2, Eye, Clock, CheckCircle, AlertCircle, TrendingUp, Award, GraduationCap, Building, UserCheck, MessageSquare, FileSpreadsheet, Library, Bus, Home, Video, Link, File, Send, Check, Play, ClipboardList, Target, Star, MessageCircle, Filter, Calendar as CalendarIcon, CheckSquare, AlertTriangle } from 'lucide-react';
 
@@ -1255,8 +1257,10 @@ export default function SchoolManagementSystem() {
             ? <TeacherAttendance user={currentUser} />
             : <AttendanceView />)}
           {activeModule === 'timetable' && (currentUser.role === 'teacher'
-            ? <TeacherTimetable user={currentUser} onNavigate={setActiveModule} />
-            : <TimetableView />)}
+            ? <TeacherTimetablePage user={currentUser} />
+            : currentUser.role === 'student' || currentUser.role === 'parent'
+              ? <ClassTimetablePage />
+              : <TimetablePage />)}
           {activeModule === 'grades' && (currentUser.role === 'teacher'
             ? <TeacherGrades user={currentUser} />
             : <GradesView />)}
@@ -3773,7 +3777,6 @@ function NewDiscussionModal({ onClose }) {
 
 // Placeholder components for remaining modules
 function TeachersView() { return <div className="page-header"><h1 className="page-title">Teachers Module</h1></div>; }
-function TimetableView() { return <div className="page-header"><h1 className="page-title">Timetable Module</h1></div>; }
 function GradesView() { return <div className="page-header"><h1 className="page-title">Grades Module</h1></div>; }
 function FeesView() { return <div className="page-header"><h1 className="page-title">Fees Module</h1></div>; }
 function CommunicationsView() { return <div className="page-header"><h1 className="page-title">Communications Module</h1></div>; }
