@@ -1,30 +1,6 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
-
-const SUBJECT_COLORS = {
-  Mathematics: '#667eea',
-  'Physical Sciences': '#10b981',
-  'Life Sciences': '#f59e0b',
-  English: '#8b5cf6',
-  Afrikaans: '#ec4899',
-  History: '#ef4444',
-  Geography: '#06b6d4',
-  'Life Orientation': '#14b8a6',
-  'Business Studies': '#f97316',
-  Accounting: '#6366f1',
-  Economics: '#84cc16',
-  'Information Technology': '#0ea5e9',
-  'Computer Applications Technology': '#0ea5e9',
-  default: '#64748b',
-};
-
-function getSubjectColor(subjectName) {
-  if (!subjectName) return SUBJECT_COLORS.default;
-  const key = Object.keys(SUBJECT_COLORS).find(
-    k => subjectName.toLowerCase().includes(k.toLowerCase())
-  );
-  return key ? SUBJECT_COLORS[key] : SUBJECT_COLORS.default;
-}
+import { getSubjectColor } from './timetableConstants';
 
 /**
  * TimetableCell - Displays a single timetable slot or an empty add button

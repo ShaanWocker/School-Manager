@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Trash2, AlertCircle } from 'lucide-react';
-
-const DAYS_LABEL = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday' };
+import { DAYS_LABEL, getDefaultTime } from './timetableConstants';
 
 /**
  * TimetableEditorModal - Modal for creating/editing a timetable slot
@@ -364,17 +363,3 @@ const inputStyle = {
   outline: 'none',
   boxSizing: 'border-box',
 };
-
-function getDefaultTime(periodNumber, type) {
-  const times = {
-    1: { start: '07:30', end: '08:20' },
-    2: { start: '08:20', end: '09:10' },
-    3: { start: '09:10', end: '10:00' },
-    4: { start: '10:30', end: '11:20' },
-    5: { start: '11:20', end: '12:10' },
-    6: { start: '12:10', end: '13:00' },
-    7: { start: '13:30', end: '14:20' },
-    8: { start: '14:20', end: '15:10' },
-  };
-  return times[periodNumber]?.[type] || (type === 'start' ? '08:00' : '09:00');
-}

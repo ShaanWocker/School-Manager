@@ -1,20 +1,6 @@
 import React from 'react';
 import TimetableCell from './TimetableCell';
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const DAY_MAP = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday' };
-
-const DEFAULT_PERIODS = [
-  { number: 1, startTime: '07:30', endTime: '08:20' },
-  { number: 2, startTime: '08:20', endTime: '09:10' },
-  { number: 3, startTime: '09:10', endTime: '10:00' },
-  { number: 4, startTime: '10:30', endTime: '11:20' },
-  { number: 5, startTime: '11:20', endTime: '12:10' },
-  { number: 6, startTime: '12:10', endTime: '13:00' },
-  { number: 7, startTime: '13:30', endTime: '14:20' },
-  { number: 8, startTime: '14:20', endTime: '15:10' },
-];
+import { DAYS, DAY_SHORT, DAY_MAP, DEFAULT_PERIODS as SHARED_DEFAULT_PERIODS } from './timetableConstants';
 
 /**
  * TimetableGrid - Reusable weekly timetable grid
@@ -34,7 +20,7 @@ export default function TimetableGrid({
   periodsPerDay = 8,
   periods: customPeriods,
 }) {
-  const periods = customPeriods || DEFAULT_PERIODS.slice(0, periodsPerDay);
+  const periods = customPeriods || SHARED_DEFAULT_PERIODS.slice(0, periodsPerDay);
 
   // Build a lookup: { "dayOfWeek-periodNumber": slot }
   const slotMap = {};

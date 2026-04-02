@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCw, Printer, Clock } from 'lucide-react';
 import TimetableGrid from './TimetableGrid';
 import timetableService from '../../services/timetableService';
-
-const DAY_MAP = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday' };
+import { DAY_MAP } from './timetableConstants';
 
 /**
  * TeacherTimetablePage - Shows timetable slots assigned to a specific teacher
@@ -63,9 +62,10 @@ export default function TeacherTimetablePage({ user }) {
   }, [selectedTimetableId, teacherId]);
 
   // Today's schedule
-  const todayNum = new Date().getDay(); // 0=Sun, 1=Mon, ...
+  // JavaScript getDay(): 0=Sunday, 1=Monday, ..., 5=Friday, 6=Saturday
+  const todayDayOfWeek = new Date().getDay();
   const todaySlots = slots
-    .filter(s => s.dayOfWeek === todayNum)
+    .filter(s => s.dayOfWeek === todayDayOfWeek)
     .sort((a, b) => a.periodNumber - b.periodNumber);
 
   // Free periods (out of 40 = 8 periods × 5 days)
@@ -158,7 +158,7 @@ export default function TeacherTimetablePage({ user }) {
           { label: 'Free Periods', value: freePeriods, color: '#10b981' },
           {
             label: "Today's Classes",
-            value: todayNum >= 1 && todayNum <= 5 ? todaySlots.length : '—',
+            value: todayDayOfWeek >= 1 && todayDayOfWeek <= 5 ? todaySlots.length : '—',
             color: '#f59e0b'
           },
           {
@@ -181,7 +181,7 @@ export default function TeacherTimetablePage({ user }) {
       </div>
 
       {/* Today's schedule (quick view) */}
-      {todayNum >= 1 && todayNum <= 5 && todaySlots.length > 0 && (
+      {todayDayOfWeek >= 1 && todayDayOfWeek <= 5 && todaySlots.length > 0 && (
         <div style={{
           background: 'white',
           borderRadius: '16px',
@@ -191,7 +191,7 @@ export default function TeacherTimetablePage({ user }) {
         }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Clock size={16} style={{ color: '#667eea' }} />
-            Today — {DAY_MAP[todayNum]}
+            Today — {DAY_MAP[todayDayOfWeek]}
           </h3>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {todaySlots.map(slot => (
