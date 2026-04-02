@@ -4,6 +4,7 @@
   "description": "EduManage SA - Complete School Management System Backend",
   "main": "src/server.js",
   "scripts": {
+    "postinstall": "prisma generate --schema=../prisma/schema.prisma",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate --schema=../prisma/schema.prisma",

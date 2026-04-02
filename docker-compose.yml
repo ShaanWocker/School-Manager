@@ -44,7 +44,7 @@ services:
       - edumanage-network
     volumes:
       - ./backend/uploads:/app/uploads
-    command: sh -c "npx prisma migrate deploy && npm start"
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm start"
 
   # Frontend
   frontend:
