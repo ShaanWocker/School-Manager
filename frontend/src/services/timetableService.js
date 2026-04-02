@@ -48,7 +48,7 @@ export const timetableService = {
   /**
    * Add a slot to a timetable
    * @param {string} timetableId - Timetable ID
-   * @param {Object} slotData - { dayOfWeek, periodNumber, startTime, endTime, subjectId, classId, teacherId, room }
+   * @param {Object} slotData - { dayOfWeek, periodNumber, startTime, endTime, subjectId, classId, teacherId, room, recurrenceType, startDate, endDate }
    * @returns {Promise} Created slot
    */
   addSlot: async (timetableId, slotData) => {

@@ -39,6 +39,9 @@ export default function TimetableEditorModal({
   const [teacherId, setTeacherId] = useState('');
   const [classId, setClassId] = useState('');
   const [room, setRoom] = useState('');
+  const [recurrenceType, setRecurrenceType] = useState('weekly');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState([]);
   const [warnings, setWarnings] = useState([]);
@@ -50,11 +53,17 @@ export default function TimetableEditorModal({
         setTeacherId(slot.teacherId || '');
         setClassId(slot.classId || defaultClassId || '');
         setRoom(slot.room || '');
+        setRecurrenceType(slot.recurrenceType || 'weekly');
+        setStartDate(slot.startDate ? slot.startDate.slice(0, 10) : '');
+        setEndDate(slot.endDate ? slot.endDate.slice(0, 10) : '');
       } else {
         setSubjectId('');
         setTeacherId('');
         setClassId(defaultClassId || '');
         setRoom('');
+        setRecurrenceType('weekly');
+        setStartDate('');
+        setEndDate('');
       }
       setErrors([]);
       setWarnings([]);
@@ -177,6 +186,9 @@ export default function TimetableEditorModal({
         room: room || null,
         startTime: slot?.startTime || getDefaultTime(periodNumber, 'start'),
         endTime: slot?.endTime || getDefaultTime(periodNumber, 'end'),
+        recurrenceType,
+        startDate: startDate || null,
+        endDate: endDate || null,
       });
       onClose();
     } catch (err) {
@@ -355,6 +367,44 @@ export default function TimetableEditorModal({
               style={inputStyle}
             />
           </div>
+
+          {/* Recurrence Type */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Recurrence</label>
+            <select
+              value={recurrenceType}
+              onChange={(e) => setRecurrenceType(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="none">None (one-off)</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+
+          {/* Date Range (shown when recurrence is not "none") */}
+          {recurrenceType !== 'none' && (
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Start Date</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>End Date</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
