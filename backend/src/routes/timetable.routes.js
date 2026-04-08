@@ -239,9 +239,6 @@ router.post('/:id/slots', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_
   body('subjectId').notEmpty().withMessage('Subject ID is required'),
   body('classId').notEmpty().withMessage('Class ID is required'),
   body('teacherId').notEmpty().withMessage('Teacher ID is required'),
-  body('recurrenceType').optional().isIn(['none', 'daily', 'weekly']).withMessage('Recurrence type must be none, daily, or weekly'),
-  body('startDate').optional({ nullable: true }).isISO8601().withMessage('Start date must be a valid date'),
-  body('endDate').optional({ nullable: true }).isISO8601().withMessage('End date must be a valid date'),
 ], async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -249,7 +246,7 @@ router.post('/:id/slots', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { dayOfWeek, periodNumber, startTime, endTime, subjectId, classId, teacherId, room, recurrenceType, startDate, endDate } = req.body;
+    const { dayOfWeek, periodNumber, startTime, endTime, subjectId, classId, teacherId, room } = req.body;
 
     // Verify timetable exists
     const timetable = await prisma.timetable.findUnique({ where: { id: req.params.id } });
@@ -286,9 +283,6 @@ router.post('/:id/slots', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_
         classId,
         teacherId,
         room: room || null,
-        recurrenceType: recurrenceType || 'weekly',
-        startDate: recurrenceType && recurrenceType !== 'none' && startDate ? new Date(startDate) : null,
-        endDate: recurrenceType && recurrenceType !== 'none' && endDate ? new Date(endDate) : null,
       },
       include: slotInclude,
     });
@@ -306,9 +300,6 @@ router.put('/:id/slots/:slotId', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 
   body('subjectId').optional().notEmpty().withMessage('Subject ID cannot be empty'),
   body('classId').optional().notEmpty().withMessage('Class ID cannot be empty'),
   body('teacherId').optional().notEmpty().withMessage('Teacher ID cannot be empty'),
-  body('recurrenceType').optional().isIn(['none', 'daily', 'weekly']).withMessage('Recurrence type must be none, daily, or weekly'),
-  body('startDate').optional({ nullable: true }).isISO8601().withMessage('Start date must be a valid date'),
-  body('endDate').optional({ nullable: true }).isISO8601().withMessage('End date must be a valid date'),
 ], async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -323,7 +314,7 @@ router.put('/:id/slots/:slotId', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 
       return res.status(404).json({ success: false, message: 'Slot not found' });
     }
 
-    const { dayOfWeek, periodNumber, startTime, endTime, subjectId, classId, teacherId, room, recurrenceType, startDate, endDate } = req.body;
+    const { dayOfWeek, periodNumber, startTime, endTime, subjectId, classId, teacherId, room } = req.body;
 
     // Merge existing values with updates for conflict checking
     const merged = {
@@ -358,22 +349,6 @@ router.put('/:id/slots/:slotId', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 
     if (classId !== undefined) data.classId = classId;
     if (teacherId !== undefined) data.teacherId = teacherId;
     if (room !== undefined) data.room = room || null;
-    if (recurrenceType !== undefined) {
-      data.recurrenceType = recurrenceType;
-      // Clear dates when recurrence is 'none'
-      if (recurrenceType === 'none') {
-        data.startDate = null;
-        data.endDate = null;
-      }
-    }
-    if (startDate !== undefined) {
-      const effectiveRecurrence = recurrenceType !== undefined ? recurrenceType : existing.recurrenceType;
-      data.startDate = effectiveRecurrence !== 'none' && startDate ? new Date(startDate) : null;
-    }
-    if (endDate !== undefined) {
-      const effectiveRecurrence = recurrenceType !== undefined ? recurrenceType : existing.recurrenceType;
-      data.endDate = effectiveRecurrence !== 'none' && endDate ? new Date(endDate) : null;
-    }
 
     const slot = await prisma.timetableSlot.update({
       where: { id: req.params.slotId },
