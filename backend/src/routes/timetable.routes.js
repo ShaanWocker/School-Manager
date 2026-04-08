@@ -238,7 +238,7 @@ router.post('/:id/slots', protect, authorize('SUPER_ADMIN', 'PRINCIPAL', 'ADMIN_
   body('endTime').notEmpty().withMessage('End time is required'),
   body('subjectId').notEmpty().withMessage('Subject ID is required'),
   body('classId').notEmpty().withMessage('Class ID is required'),
-  body('teacherId').notEmpty().withMessage('Teacher ID is required')
+  body('teacherId').notEmpty().withMessage('Teacher ID is required'),
 ], async (req, res, next) => {
   try {
     const errors = validationResult(req);

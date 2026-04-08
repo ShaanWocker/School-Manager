@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, RefreshCw, Printer, ChevronDown, Users } from 'lucide-react';
 import TimetableGrid from './TimetableGrid';
-import TimetableEditorModal from './TimetableEditorModal';
+import PeriodSlotsPanel from './PeriodSlotsPanel';
 import CreateTimetableModal from './CreateTimetableModal';
 import timetableService from '../../services/timetableService';
 import classService from '../../services/classService';
@@ -27,10 +27,9 @@ export default function TimetablePage() {
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [periodPanelOpen, setPeriodPanelOpen] = useState(false);
   const [modalDay, setModalDay] = useState(1);
   const [modalPeriod, setModalPeriod] = useState(1);
-  const [modalSlot, setModalSlot] = useState(null);
   const [viewMode, setViewMode] = useState('class'); // 'class' or 'teacher'
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -99,12 +98,11 @@ export default function TimetablePage() {
   // All slots (for conflict detection across all classes)
   const allSlots = slots;
 
-  const handleCellClick = (dayOfWeek, periodNumber, slot) => {
+  const handleCellClick = (dayOfWeek, periodNumber) => {
     if (viewMode === 'teacher') return; // Read-only in teacher view
     setModalDay(dayOfWeek);
     setModalPeriod(periodNumber);
-    setModalSlot(slot);
-    setModalOpen(true);
+    setPeriodPanelOpen(true);
   };
 
   const handleSave = async (slotData) => {
@@ -497,21 +495,20 @@ export default function TimetablePage() {
         </p>
       )}
 
-      {/* Editor Modal */}
-      <TimetableEditorModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+      {/* Period Slots Panel */}
+      <PeriodSlotsPanel
+        open={periodPanelOpen}
+        onClose={() => setPeriodPanelOpen(false)}
         onSave={handleSave}
         onDelete={handleDelete}
         onCheckConflicts={handleCheckConflicts}
-        slot={modalSlot}
         dayOfWeek={modalDay}
         periodNumber={modalPeriod}
+        periodSlots={allSlots.filter(s => s.dayOfWeek === modalDay && s.periodNumber === modalPeriod)}
         subjects={subjects}
         teachers={teachers}
         classes={classes}
         allSlots={allSlots}
-        classId={selectedClassId}
       />
 
       {/* Create Timetable Modal */}

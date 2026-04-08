@@ -22,12 +22,13 @@ export default function TimetableGrid({
 }) {
   const periods = customPeriods || SHARED_DEFAULT_PERIODS.slice(0, periodsPerDay);
 
-  // Build a lookup: { "dayOfWeek-periodNumber": slot }
+  // Build a lookup: { "dayOfWeek-periodNumber": slot[] }
   const slotMap = {};
   slots.forEach(slot => {
     const dayName = typeof slot.dayOfWeek === 'number' ? DAY_MAP[slot.dayOfWeek] : slot.dayOfWeek;
     const key = `${dayName}-${slot.periodNumber}`;
-    slotMap[key] = slot;
+    if (!slotMap[key]) slotMap[key] = [];
+    slotMap[key].push(slot);
   });
 
   const isBreakAfter = (periodNum) => periodNum === 3 || periodNum === 6;
@@ -100,16 +101,16 @@ export default function TimetableGrid({
                 </td>
                 {DAYS.map((day) => {
                   const key = `${day}-${period.number}`;
-                  const slot = slotMap[key];
+                  const cellSlots = slotMap[key] || [];
                   const dayIdx = DAYS.indexOf(day) + 1;
                   return (
                     <td key={key} style={{ padding: '2px', verticalAlign: 'top' }}>
                       <TimetableCell
-                        slot={slot}
+                        slots={cellSlots}
                         editable={editable}
                         onClick={
                           onCellClick
-                            ? () => onCellClick(dayIdx, period.number, slot || null)
+                            ? (slot) => onCellClick(dayIdx, period.number, slot || null)
                             : undefined
                         }
                       />
